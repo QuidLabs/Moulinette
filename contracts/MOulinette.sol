@@ -1,30 +1,35 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity =0.8.8; 
 // pragma experimental SMTChecker;
-import "hardhat/console.sol"; // TODO comment out
+import "hardhat/console.sol"; // TODO comment out these 2 
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "./interfaces/AggregatorV3Interface.sol";
-import "@openzeppelin/contracts/access/Ownable.sol"; // TODO delete after finish testing
-
+import {TransferHelper} from "./interfaces/TransferHelper.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import "./interfaces/AggregatorV3Interface.sol";
 import {TickMath} from "./interfaces/math/TickMath.sol";
 import {FullMath} from "./interfaces/math/FullMath.sol";
-import {IUniswapV3Pool} from "./interfaces/IUniswapV3Pool.sol";
-import {TransferHelper} from "./interfaces/TransferHelper.sol";
 import {LiquidityAmounts} from "./interfaces/math/LiquidityAmounts.sol";
+import {IUniswapV3Pool} from "./interfaces/IUniswapV3Pool.sol";
 import {INonfungiblePositionManager} from "./interfaces/INonfungiblePositionManager.sol";
 
 interface IWETH is IERC20 {
-    function deposit() external payable;
-    function withdraw(uint256 amount) external;
+    function deposit() 
+    external payable;
 }
 
 contract Moulinette is IERC721Receiver, Ownable { 
-    address public SUSDE; // TODO set in constructor during testing period...
-    address constant public SUSDE = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
-    address constant public WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address constant public WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
+    // TODO comment these out
+    address public SUSDE; 
+    address public WETH; 
+    address public WBTC; 
+    
+    // TODO uncomment these
+    // address constant public SUSDE = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
+    // address constant public WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    // address constant public WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
     uint public FEE = WAD / 28; // 3.57143% upfront premium for drop insurance
     
     // 0.3% fee tier has tick spacing of 60; 
@@ -52,24 +57,20 @@ contract Moulinette is IERC721Receiver, Ownable {
     address constant public ETH_PRICE = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address constant public BTC_PRICE = 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c;
     
-    uint[90] weights; // sum weights for each FEE
+    // The following 3 variables are used to _calculateMedian
+    uint[90] internal WEIGHTS; // sum of weights for each FEE
     // index 0 represents largest possibility = 9%
     // index 89 represents the smallest one = 1%
     // derivation of FEE = WAD / (index + 11)...
-    event Median(uint oldMedian, uint newMedian);
-    struct Medianiser { 
-        uint total; // _POINTS > sum of ALL weights... 
-        uint sum_w_k; // sum(weights[0..k]) sum of sums
-        uint k; // approximate index of median (+/- 1)
-    } Medianiser public median; 
-    
+    uint internal MEDIAN; // approx. index of median (+/- 1)
+    uint internal SUM; // sum(weights[0..k]) sum of sums...
     struct Pledge { 
         // An offer is a promise or commitment to do
         // or refrain from doing something specific
         // in the future. Our case is bilateral...
         // promise for a promise, aka quid pro quo
         mapping (address => Pod) offers; // stakes
-        uint deposit; // insurer's USDe deposit... 
+        uint vote; // for what the FEE should be
     }   mapping (address => Pledge) internal quid; 
     // continuous payment comes from Uniswap LP fees
     // while a fixed charge (deductible) is payable 
@@ -80,24 +81,36 @@ contract Moulinette is IERC721Receiver, Ownable {
     struct Pod { // in the context of most offers,
         uint credit; // sum of (amount x price upon offer)
         uint debit; // actual quantity of tokens pledged 
+        // for USDe, most pledges only need debit, for
+        // address(this) both used (credit is coverage)
+        // ^^^^^^^^^^^^ doesn't use debit for WETH/WBTC
     }
     
-    constructor(address _usde) Ownable() { // TODO parameter + Ownable only for testing
+    constructor(address _susde, address _wbtc, address _weth) Ownable() { // TODO remove parameters and Ownable (only for testing)
         POOL = IUniswapV3Pool(0xCBCdF9626bC03E24f779434178A73a0B4bad62eD);
         address nfpm = 0xC36442b4a4522E871399CD717aBDD847Ab11FE88;
         TransferHelper.safeApprove(WETH, nfpm, type(uint256).max);
         TransferHelper.safeApprove(WBTC, nfpm, type(uint256).max);
-        USDE = _usde; NFPM = INonfungiblePositionManager(nfpm);
+        
+        SUSDE = _susde; WBTC = _wbtc; WETH = _weth;
+        NFPM = INonfungiblePositionManager(nfpm);
+
+        LAST_TWAP_TICK = _getTWAPtick();        
+        (UPPER_TICK, LOWER_TICK) = _adjustTicks(LAST_TWAP_TICK);
+        INonfungiblePositionManager.MintParams memory params =
+            INonfungiblePositionManager.MintParams({
+                token0: WBTC, token1: WETH, fee: POOL_FEE,
+                tickLower: LOWER_TICK, tickUpper: UPPER_TICK,
+                amount0Desired: IERC20(WBTC).balanceOf(address(this)),
+                amount1Desired: IERC20(WETH).balanceOf(address(this)),
+                amount0Min: 0, amount1Min: 0, recipient: address(this),
+                deadline: block.timestamp });
+        (TOKEN_ID,,,) = NFPM.mint(params);
     }
     
     /*«-«-«-«-«-«-«-«-«-«-«-«-«-«-«-«-«-«-«-«-«-«-«-«-«-«-«-«-«-«-*/
     /*                       HELPER FUNCTIONS                     */
     /*-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»*/
-
-    modifier isLP {
-      require(TOKEN_ID > 0, "QD: !LP");
-      _;
-    }
     
     function _min(uint _a, uint _b) internal pure returns (uint) {
         return (_a < _b) ? _a : _b;
@@ -129,17 +142,17 @@ contract Moulinette is IERC721Receiver, Ownable {
         }   return result;
     }
 
+    // Adjust to the nearest multiple of 60
     function _adjustTicks(int24 input) 
-        internal pure returns (int24, int24) {
-        int256 delta = int256(WAD / 14); // 7.143%
-        int24 increase = int24((int256(input) * (WAD + delta)) / WAD);
-        int24 decrease = int24((int256(input) * (WAD - delta)) / WAD);
-
-        // Adjust to the nearest multiple of 60
-        int24 adjustedIncrease = _adjustToNearestIncrement(increase);
-        int24 adjustedDecrease = _adjustToNearestIncrement(decrease);
-
-        return (adjustedIncrease, adjustedDecrease);
+        internal pure returns 
+        (int24 adjustedIncrease, 
+        int24 adjustedDecrease) {
+        int256 upper = int256(WAD + WAD / 14);
+        int256 lower = int256(WAD - WAD / 14);
+        int24 increase = int24((int256(input) * upper) / int256(WAD));
+        int24 decrease = int24((int256(input) * lower) / int256(WAD));
+        adjustedIncrease = _adjustToNearestIncrement(increase);
+        adjustedDecrease = _adjustToNearestIncrement(decrease);
     }
    
     function _getTWAPtick() internal view returns (int24) {
@@ -155,11 +168,12 @@ contract Moulinette is IERC721Receiver, Ownable {
 
     function _decreaseAndCollect(uint128 liquidity) internal returns (uint amount0, uint amount1) {
          NFPM.decreaseLiquidity(
-            INonfungiblePositionManager.DecreaseLiquidityParams(TOKEN_ID, 
-                liquidity, 0, 0, block.timestamp
+            INonfungiblePositionManager.DecreaseLiquidityParams(
+                TOKEN_ID, liquidity, 0, 0, block.timestamp
             )
         );
-        (amount0, amount1) = NFPM.collect(
+        (amount0, 
+         amount1) = NFPM.collect(
             INonfungiblePositionManager.CollectParams(TOKEN_ID, 
                 address(this), type(uint128).max, type(uint128).max
             )
@@ -183,7 +197,7 @@ contract Moulinette is IERC721Receiver, Ownable {
         }
         (, int priceAnswer,, uint timeStamp,) = chainlink.latestRoundData();
         require(timeStamp > 0 && timeStamp <= block.timestamp 
-                && priceAnswer >= 0, "QD::price");
+                && priceAnswer >= 0, "price");
         uint8 answerDigits = chainlink.decimals();
         price = uint(priceAnswer);
         // currently the Aggregator returns an 8-digit precision, but we handle the case of future changes
@@ -198,78 +212,104 @@ contract Moulinette is IERC721Receiver, Ownable {
     function deposit(address beneficiary, uint amount,
                      address token) external payable {
         
-        amount = _min(amount, IERC20(token).balanceOf(_msgSender()));
-        require(amount > 0, "QD::deposit: insufficient balance");
-        TransferHelper.safeTransferFrom(token, 
-            _msgSender(), address(this), amount);
+        amount = _min(amount, IERC20(token).balanceOf(msg.sender));
         
+        require(amount > 0, "insufficient balance");
         uint amount0 = token == WBTC ? amount : 0;
         uint amount1 = token == WETH ? amount : 0;
-        Pledge storage pledge =  quid[addr];
+        Pledge storage pledge = quid[beneficiary];
 
         if (msg.value > 0) {
-            require(token == WETH, "QD::deposit: WETH");
-            IWETH(WETH).deposit{value: msg.value}(); // WETH balance available to address(this)
+            require(token == WETH, "WETH");
+            // WETH becomes available to address(this)
+            IWETH(WETH).deposit{value: msg.value}(); 
             amount1 += msg.value;
         }   
-        else if (token == SUSDE) { pledge.deposit = amount;
+        else if (token == SUSDE) {
+            uint old_stake = pledge.offers[token].debit;
+            pledge.offers[token].debit += amount;
             quid[address(this)].offers[token].debit += amount;
+            
+            _calculateMedian(pledge.offers[token].debit, 
+                pledge.vote, old_stake, pledge.vote);
         } 
         else {
-            _deposit()
-            if (TOKEN_ID > 0) 
-            {
-                NFPM.increaseLiquidity(
-                    INonfungiblePositionManager.IncreaseLiquidityParams(TOKEN_ID,
-                                                        amount0, amount1, 0, 0, // TODO slippage
-                                                    block.timestamp + 1 minutes)
-                );
+            uint price = _getPrice(token);     
+            if (token == WBTC) { // has a precision of 8 digits
+                amount *= 10 ** 10; // convert for compatibility
             }
+            uint in_dollars = FullMath.mulDiv(price, amount, WAD);
+            uint deductible = FullMath.mulDiv(in_dollars, FEE, WAD);
+            pledge.offers[token].credit += in_dollars - deductible;
+
+            deductible = FullMath.mulDiv(WAD, deductible, price);
+            pledge.offers[token].debit += amount - deductible;
+            quid[address(this)].offers[token].debit += deductible; 
+            
+            NFPM.increaseLiquidity(
+                INonfungiblePositionManager.IncreaseLiquidityParams(
+                    TOKEN_ID, amount0, amount1, 0, 0, block.timestamp)
+            );
         } 
-    }
-
-    function _deposit() {
-        uint price = _getPrice(token);     
-        
-        uint in_dollars = FullMath.mulDiv(price, amount, WAD);
-        uint deductible = FullMath.mulDiv(in_dollars, FEE, WAD);
-        pledge.offers[token].credit += in_dollars - deductible;
-
-        deductible = FullMath.mulDiv(WAD, deductible, price);
-        pledge.offers[token].debit += amount - deductible;
-        quid[address(this)].offers[token].debit += deductible; 
-    }
-
-    function vote() {
-
+        TransferHelper.safeTransferFrom(token, 
+            msg.sender, address(this), amount);
     }
     
     // You had not sold the tokens to the contract, but they were at
     // at stake in an offering (an option contract for coverage)...
     function withdraw(address token,
-        uint amount) isLP external {
-        uint current_price = _getPrice(token);
-        Pledge storage pledge = _fetch(_msgSender(), true);
+        uint amount) external { uint coverage;
+        Pledge storage pledge = quid[msg.sender];
+        
         amount = _min(pledge.offers[token].debit, amount);
-        require(amount > 0, "QD::withdraw: non-existant offer");
-        if (token == SUSDE) { amountToTransfer = amount;
+        require(amount > 0, "withdraw"); uint amountToTransfer;
+        
+        if (token == SUSDE) {
+            uint old_stake = pledge.offers[token].debit;
             // Calculate pro rata in rewards & coverage...
+            uint ratio = FullMath.mulDiv(WAD, // % of total USDe
+                amount, quid[address(this)].offers[token].debit);
             
-        } else { // withdraw WETH or WBTC that was being insured by USDe
-            uint deductible; // only payable if there is an insured event...
+            uint btc_price = _getPrice(WBTC);
+            uint rewardsBTC = FullMath.mulDiv(ratio, 
+                quid[address(this)].offers[WBTC].debit, WAD);
+            // BTC rewards withdrawable in a separate transaction
+            quid[address(this)].offers[WBTC].debit -= rewardsBTC;
+            pledge.offers[WBTC].debit += rewardsBTC; 
+            pledge.offers[WBTC].credit += FullMath.mulDiv(rewardsBTC, 
+                                                    btc_price, WAD); 
+            uint eth_price = _getPrice(WBTC);
+            uint rewardsETH = FullMath.mulDiv(ratio,
+                quid[address(this)].offers[WETH].debit, WAD);
+            // ETH rewards withdrawable in a separate transaction
+            quid[address(this)].offers[WETH].debit -= rewardsETH;
+            pledge.offers[WETH].debit += rewardsETH;
+            pledge.offers[WETH].credit += FullMath.mulDiv(rewardsETH, 
+                                                    eth_price, WAD);
+            coverage = FullMath.mulDiv(ratio,
+                quid[address(this)].offers[token].credit, WAD);
+
+            quid[address(this)].offers[token].credit -= coverage;
+            pledge.offers[token].debit -= amount + coverage;
+            amountToTransfer = amount - coverage;
+
+            _calculateMedian(pledge.offers[token].debit, 
+                pledge.vote, old_stake, pledge.vote);  
+        } else { // withdraw WETH / WBTC that's being insured by USDe
+            uint current_price = _getPrice(token); uint deductible; 
             uint current_value = FullMath.mulDiv(amount, current_price, WAD);
             uint coverable = FullMath.mulDiv(current_price, WAD + 3 * FEE, WAD);
             uint average_price = FullMath.mulDiv(WAD, pledge.offers[token].credit, 
                                                     pledge.offers[token].debit);
-            if (average_price > coverable) { // more than an 11% drop is an insured event...
-                uint coverage = FullMath.mulDiv(amount, average_price, WAD) - current_value;
+            if (average_price > coverable) { // more than an 11% drop is an insured event
+                coverage = FullMath.mulDiv(amount, average_price, WAD) - current_value;
                 // coverage is not the same as if you borrowed at 90 LTV, then 
                 // relinquished your collateral, and walked away with the stables
                 // here, you get your colleteral back, with an additional coverage
                 pledge.offers[SUSDE].debit += coverage; 
                 // if you withdraw assets, but don't receive coverage, you don't pay
-                deductible = FullMath.mulDiv(FullMath.mulDiv(
-                    current_value, FEE, WAD), WAD, current_price
+                deductible = FullMath.mulDiv(WAD, FullMath.mulDiv(
+                    current_value, FEE, WAD), current_price
                 );  
                 quid[address(this)].offers[token].debit += deductible;
                 quid[address(this)].offers[SUSDE].credit += coverage;
@@ -280,30 +320,32 @@ contract Moulinette is IERC721Receiver, Ownable {
             // first determine liquidity needed to call decreaseLiquidity:
             uint160 sqrtPriceX96AtTickLower = TickMath.getSqrtPriceAtTick(LOWER_TICK);
             uint160 sqrtPriceX96AtTickUpper = TickMath.getSqrtPriceAtTick(UPPER_TICK);
-            uint amount0; uint amount1; uint amountToTransfer = amount - deductible;
+            uint amount0; uint amount1; amountToTransfer = amount - deductible;
             if (token == WETH) {
                 uint128 liquidity = LiquidityAmounts.getLiquidityForAmount1(
                     sqrtPriceX96AtTickUpper, sqrtPriceX96AtTickLower,
-                    amount
+                    amountToTransfer
                 );
                 (amount0,
-                amount1) = _decreaseAndCollect(liquidity); amount1 -= amountToTransfer;
-            } else if (token == WBTC) {
+                 amount1) = _decreaseAndCollect(liquidity); amount1 -= amountToTransfer;
+            }
+            else {
+                amountToTransfer /= 10 ** 10; // has a precision of 8 digits
                 uint128 liquidity = LiquidityAmounts.getLiquidityForAmount0(
                     sqrtPriceX96AtTickUpper, sqrtPriceX96AtTickLower,
-                    amount
+                    amountToTransfer
                 );
                 (amount0,
-                amount1) = _decreaseAndCollect(liquidity); amount0 -= amountToTransfer;
+                 amount1) = _decreaseAndCollect(liquidity); amount0 -= amountToTransfer;
             }
             NFPM.increaseLiquidity(
-                INonfungiblePositionManager.IncreaseLiquidityParams(TOKEN_ID,
-                    amount0, amount1, 0, 0, block.timestamp
+                INonfungiblePositionManager.IncreaseLiquidityParams(
+                    TOKEN_ID, amount0, amount1, 0, 0, block.timestamp
                 )
             );
         }
         TransferHelper.safeTransfer(token,
-                      _msgSender(), amountToTransfer);
+            msg.sender, amountToTransfer);
     }
     
     // We want to make sure that all of the WETH and / or WBTC
@@ -311,28 +353,13 @@ contract Moulinette is IERC721Receiver, Ownable {
     // Since repackNFT() is relatively costly in terms of gas, 
     // we want to call it rarely...so as a rule of thumb, the  
     // range is roughly 14% total, 7% below TWAP and 7% above 
-    function _repackNFT() internal {  uint128 liquidity = 0;
-        if (LAST_TWAP_TICK > 0) { int24 twap = _getTWAPtick();  
-            if (twap > UPPER_TICK || // TWAP over last 2 days
-                twap < LOWER_TICK) { LAST_TWAP_TICK = twap; 
-                (,,,,,,, liquidity,,,,) = NFPM.positions(TOKEN_ID);
-                _decreaseAndCollect(liquidity); NFPM.burn(TOKEN_ID);
-            }
-        }   
-        else if (TOKEN_ID == 0) { // first time creating the Uniswap V3 NFT...
-            uint eth_price = _getPrice(WETH); uint btc_price = _getPrice(WBTC);
-            uint eth = FullMath.mulDiv(IERC20(WETH).balanceOf(
-                address(this)), eth_price, WAD
-            );
-            uint btc = FullMath.mulDiv(IERC20(WBTC).balanceOf(
-                address(this)), btc_price, WAD
-            );
-            // two stacks can be used as sandals (sole-bounds),
-            // so this is the minimum amount for the soul-bound
-            if (eth >= STACK && btc >= STACK) { liquidity = 1; 
-                LAST_TWAP_TICK = _getTWAPtick();
-            }   
-        }   
+    function repackNFT() external {
+        uint128 liquidity; int24 twap = _getTWAPtick();  
+        if (twap > UPPER_TICK || // TWAP over last 2 days
+            twap < LOWER_TICK) { LAST_TWAP_TICK = twap; 
+            (,,,,,,, liquidity,,,,) = NFPM.positions(TOKEN_ID);
+            _decreaseAndCollect(liquidity); NFPM.burn(TOKEN_ID);
+        }
         if (liquidity > 0) {
             (UPPER_TICK, LOWER_TICK) = _adjustTicks(LAST_TWAP_TICK);
             INonfungiblePositionManager.MintParams memory params =
@@ -352,12 +379,12 @@ contract Moulinette is IERC721Receiver, Ownable {
                 )
             );
             NFPM.increaseLiquidity(
-                INonfungiblePositionManager.IncreaseLiquidityParams(TOKEN_ID,
-                    amount0, amount1, 0, 0, block.timestamp
+                INonfungiblePositionManager.IncreaseLiquidityParams(
+                    TOKEN_ID, amount0, amount1, 0, 0, block.timestamp
                 )
             );
         }
-    }   function repack() external { _repackNFT(); }
+    }
 
     /** Whenever an {IERC721} `tokenId` token is transferred to this contract:
      * @dev Safe transfer `tokenId` token from `from` to `address(this)`, 
@@ -374,15 +401,85 @@ contract Moulinette is IERC721Receiver, Ownable {
         address from, // previous owner
         uint tokenId, bytes calldata data
     ) external override returns (bytes4) {
-        
+        Pledge storage pledge = quid[from];
         (,, address token0, address token1,
-         ,,,,,,,) = NFPM.positions(tokenId);
-
+         ,,, uint128 liquidity,,,,) = NFPM.positions(tokenId);
         require(token0 == WBTC && token1 == WETH, "wrong pool");
+        (uint amount0, 
+        uint amount1) = _decreaseAndCollect(liquidity);
+        uint price; uint in_dollars; uint deductible;
+        if (amount0 > 0) { price = _getPrice(token0);
+            in_dollars = FullMath.mulDiv(price, amount0, WAD);
+            deductible = FullMath.mulDiv(in_dollars, FEE, WAD);
 
-        // TODO unwrap and collect then call _deposit()
+            pledge.offers[token0].credit += in_dollars - deductible;
+            deductible = FullMath.mulDiv(WAD, deductible, price);
+            pledge.offers[token0].debit += amount0 - deductible;
+            quid[address(this)].offers[token0].debit += deductible; 
+        }
+        if (amount1 > 0) { price = _getPrice(token1);
+            in_dollars = FullMath.mulDiv(price, amount1, WAD);
+            deductible = FullMath.mulDiv(in_dollars, FEE, WAD);
 
-
+            pledge.offers[token1].credit += in_dollars - deductible;
+            deductible = FullMath.mulDiv(WAD, deductible, price);
+            pledge.offers[token1].debit += amount1 - deductible;
+            quid[address(this)].offers[token1].debit += deductible; 
+        }
+        NFPM.increaseLiquidity(
+            INonfungiblePositionManager.IncreaseLiquidityParams(TOKEN_ID,
+                amount0, amount1, 0, 0, block.timestamp
+            )
+        );
         return this.onERC721Received.selector;
+    }
+
+    function vote(uint new_vote) external {
+        Pledge storage pledge = quid[msg.sender];
+        uint old_vote = pledge.vote;
+        pledge.vote = new_vote;
+        require(new_vote != old_vote &&
+                new_vote < 89, "bad vote");
+        uint stake = pledge.offers[SUSDE].debit;
+        _calculateMedian(stake, new_vote, 
+                         stake, old_vote);
+    }
+
+    /** 
+     *  Find value of k in range(0, len(Weights)) such that 
+     *  sum(Weights[0:k]) = sum(Weights[k:len(Weights)+1]) = sum(Weights) / 2
+     *  If there is no such value of k, there must be a value of k 
+     *  in the same range range(0, len(Weights)) such that 
+     *  sum(Weights[0:k]) > sum(Weights) / 2
+     */ 
+    function _calculateMedian(uint new_stake, uint new_vote, 
+        uint old_stake, uint old_vote) internal { 
+        uint total = quid[address(this)].offers[SUSDE].debit;
+        if (old_vote != 0 && old_stake != 0) { 
+            WEIGHTS[old_vote] -= old_stake;
+            if (old_vote <= MEDIAN) {   
+                SUM -= old_stake;
+            }
+        }
+        if (new_stake != 0) {
+            if (new_vote <= MEDIAN) {
+                SUM += new_stake;
+            }		  
+            WEIGHTS[new_vote] += new_stake;
+        } 
+        uint mid_stake = total / 2;
+        if (total != 0 && mid_stake != 0) {
+            if (MEDIAN > new_vote) {
+                while (MEDIAN >= 1 && (
+                     (SUM - WEIGHTS[MEDIAN]) >= mid_stake
+                )) { SUM -= WEIGHTS[MEDIAN]; MEDIAN -= 1; }
+            } else {
+                while (SUM < mid_stake) { MEDIAN += 1;
+                       SUM += WEIGHTS[MEDIAN];
+                }
+            } 
+            FEE = WAD / (MEDIAN + 11);
+        }  
+        else { SUM = 0; } 
     }
 } 
