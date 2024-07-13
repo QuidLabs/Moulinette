@@ -14,9 +14,10 @@ insure against price drops.
 While insured by the contract...ETH  
 and wBTC tokens are also deployed  
 as LP capital in the largest Uniswap  
-V3 pool (fees auto-compounded)...  
+V3 pool (fees are auto-compounded  
 
-Contract can't insure more than   
+and get distributed to insurers);  
+contract can't insure more than   
 the total value of sUSDe staked  
 as insurance capital (earning  
 pro rata rewards & liabilities).  

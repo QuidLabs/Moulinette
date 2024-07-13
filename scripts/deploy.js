@@ -12,15 +12,23 @@ async function main() { // rinkeby:
   console.log('deploy mock');
   let Mock = await ethers.getContractFactory("mock");
   
-  const mock = await Mock.deploy();
-  const token = await mock.getAddress()
-  
-  console.log('token deployed at', token)
+  const mockUSDe = await Mock.deploy();
+  const USDeToken = await mockUSDe.getAddress()
+  console.log('USDeToken deployed at', USDeToken)
 
-  console.log('deploy MO');
+  const mockWBTC = await Mock.deploy();
+  const WBTCtoken = await mockWBTC.getAddress()
+  console.log('WBTCtoken deployed at', WBTCtoken)
+  
+  const mockWETH = await Mock.deploy();
+  const WETHtoken = await mockWETH.getAddress()
+  console.log('WETHtoken deployed at', WETHtoken)
+  
+
+  console.log('deploying MO');
   let MO = await ethers.getContractFactory("Moulinette");
 
-  const mo = await MO.deploy(token)
+  const mo = await MO.deploy(USDeToken, WBTCtoken, WETHtoken)
   
   console.log(await mo.getAddress())
  

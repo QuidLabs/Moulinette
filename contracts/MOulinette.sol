@@ -20,17 +20,20 @@ interface IWETH is IERC20 {
     external payable;
 }
 
-contract Moulinette is IERC721Receiver, Ownable { 
+contract Moulinette is 
+    IERC721Receiver, Ownable { 
     // TODO comment these out
     address public SUSDE; 
     address public WETH; 
     address public WBTC; 
     
     // TODO uncomment these
-    // address constant public SUSDE = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
-    // address constant public WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    // address constant public WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
-    uint public FEE = WAD / 28; // 3.57143% upfront premium for drop insurance
+    // address constant 
+    // public SUSDE = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
+    // address constant 
+    // public WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    // address constant 
+    // public WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
     
     // 0.3% fee tier has tick spacing of 60; 
     uint24 constant public POOL_FEE = 3000;  
@@ -42,9 +45,10 @@ contract Moulinette is IERC721Receiver, Ownable {
 
     int24 constant INCREMENT = 60;
     int24 internal LAST_TWAP_TICK;
-   
+
     int24 internal UPPER_TICK;
     int24 internal LOWER_TICK;
+    uint public FEE = WAD / 28; 
     error UnsupportedToken();
 
     uint public TOKEN_ID; // protocol manages one giant NFT deposit 
@@ -166,8 +170,9 @@ contract Moulinette is IERC721Receiver, Ownable {
         } 
     }
 
-    function _decreaseAndCollect(uint128 liquidity) internal returns (uint amount0, uint amount1) {
-         NFPM.decreaseLiquidity(
+    function _decreaseAndCollect(uint128 liquidity) 
+        internal returns (uint amount0, uint amount1) {
+        NFPM.decreaseLiquidity(
             INonfungiblePositionManager.DecreaseLiquidityParams(
                 TOKEN_ID, liquidity, 0, 0, block.timestamp
             )
@@ -180,11 +185,12 @@ contract Moulinette is IERC721Receiver, Ownable {
         );
     }
 
-     /** 
+    /** 
      * Returns the latest price obtained from the Chainlink ETH:USD aggregator 
      * reference contract...https://docs.chain.link/docs/get-the-latest-price
      */
-    function _getPrice(address token) internal view returns (uint price) {
+    function _getPrice(address token) 
+    internal view returns (uint price) {
         AggregatorV3Interface chainlink; 
         if (token == WETH) {
             if (_ETH_PRICE > 0) return _ETH_PRICE; // TODO comment out 
@@ -196,11 +202,15 @@ contract Moulinette is IERC721Receiver, Ownable {
             revert UnsupportedToken();
         }
         (, int priceAnswer,, uint timeStamp,) = chainlink.latestRoundData();
-        require(timeStamp > 0 && timeStamp <= block.timestamp 
-                && priceAnswer >= 0, "price");
+        
+        require(timeStamp > 0 
+            && timeStamp <= block.timestamp 
+            && priceAnswer >= 0, "price");
+        
         uint8 answerDigits = chainlink.decimals();
         price = uint(priceAnswer);
-        // currently the Aggregator returns an 8-digit precision, but we handle the case of future changes
+        // Aggregator returns an 8-digit precision, 
+        // but we handle the case of future changes
         if (answerDigits > 18) { price /= 10 ** (answerDigits - 18); }
         else if (answerDigits < 18) { price *= 10 ** (18 - answerDigits); } 
     }
@@ -219,7 +229,8 @@ contract Moulinette is IERC721Receiver, Ownable {
         uint amount1 = token == WETH ? amount : 0;
         Pledge storage pledge = quid[beneficiary];
 
-        if (msg.value > 0) {
+        _repackNFT();
+        if (msg.value > 0) { 
             require(token == WETH, "WETH");
             // WETH becomes available to address(this)
             IWETH(WETH).deposit{value: msg.value}(); 
@@ -264,10 +275,11 @@ contract Moulinette is IERC721Receiver, Ownable {
         amount = _min(pledge.offers[token].debit, amount);
         require(amount > 0, "withdraw"); uint amountToTransfer;
         
+        _repackNFT();
         if (token == SUSDE) {
             uint old_stake = pledge.offers[token].debit;
             // Calculate pro rata in rewards & coverage...
-            uint ratio = FullMath.mulDiv(WAD, // % of total USDe
+            uint ratio = FullMath.mulDiv(WAD, // % of total USDe...
                 amount, quid[address(this)].offers[token].debit);
             
             uint btc_price = _getPrice(WBTC);
@@ -294,13 +306,13 @@ contract Moulinette is IERC721Receiver, Ownable {
             amountToTransfer = amount - coverage;
 
             _calculateMedian(pledge.offers[token].debit, 
-                pledge.vote, old_stake, pledge.vote);  
+                    pledge.vote, old_stake, pledge.vote);  
         } else { // withdraw WETH / WBTC that's being insured by USDe
             uint current_price = _getPrice(token); uint deductible; 
             uint current_value = FullMath.mulDiv(amount, current_price, WAD);
-            uint coverable = FullMath.mulDiv(current_price, WAD + 3 * FEE, WAD);
+            uint coverable = FullMath.mulDiv(current_price, WAD + 3 * FEE, WAD); // TODO
             uint average_price = FullMath.mulDiv(WAD, pledge.offers[token].credit, 
-                                                    pledge.offers[token].debit);
+                                                      pledge.offers[token].debit);
             if (average_price > coverable) { // more than an 11% drop is an insured event
                 coverage = FullMath.mulDiv(amount, average_price, WAD) - current_value;
                 // coverage is not the same as if you borrowed at 90 LTV, then 
@@ -353,7 +365,8 @@ contract Moulinette is IERC721Receiver, Ownable {
     // Since repackNFT() is relatively costly in terms of gas, 
     // we want to call it rarely...so as a rule of thumb, the  
     // range is roughly 14% total, 7% below TWAP and 7% above 
-    function repackNFT() external {
+    function repaceNFT() external { _repackNFT(); }
+    function _repackNFT() internal {
         uint128 liquidity; int24 twap = _getTWAPtick();  
         if (twap > UPPER_TICK || // TWAP over last 2 days
             twap < LOWER_TICK) { LAST_TWAP_TICK = twap; 
@@ -373,11 +386,13 @@ contract Moulinette is IERC721Receiver, Ownable {
             (TOKEN_ID,,,) = NFPM.mint(params);
         } 
         else { // no need to repack NFT, but compound
-            (uint amount0, uint amount1) = NFPM.collect(
+            (uint amount0, uint amount1) = NFPM.collect( // LP fees
                 INonfungiblePositionManager.CollectParams(TOKEN_ID, 
                     address(this), type(uint128).max, type(uint128).max
                 )
-            );
+            ); 
+            quid[address(this)].offers[WBTC].debit += amount0;
+            quid[address(this)].offers[WETH].debit += amount1;
             NFPM.increaseLiquidity(
                 INonfungiblePositionManager.IncreaseLiquidityParams(
                     TOKEN_ID, amount0, amount1, 0, 0, block.timestamp
@@ -406,9 +421,10 @@ contract Moulinette is IERC721Receiver, Ownable {
          ,,, uint128 liquidity,,,,) = NFPM.positions(tokenId);
         require(token0 == WBTC && token1 == WETH, "wrong pool");
         (uint amount0, 
-        uint amount1) = _decreaseAndCollect(liquidity);
+         uint amount1) = _decreaseAndCollect(liquidity);
         uint price; uint in_dollars; uint deductible;
         if (amount0 > 0) { price = _getPrice(token0);
+            amount0 *= 10 ** 10; // WBTC has precision of 8
             in_dollars = FullMath.mulDiv(price, amount0, WAD);
             deductible = FullMath.mulDiv(in_dollars, FEE, WAD);
 
