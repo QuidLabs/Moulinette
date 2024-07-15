@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity =0.8.8; 
 // pragma experimental SMTChecker;
-import "hardhat/console.sol"; // TODO comment out these 2 
+import "hardhat/console.sol"; // TODO delete these 2 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import {TransferHelper} from "./interfaces/TransferHelper.sol";
@@ -22,19 +22,21 @@ interface IWETH is IERC20 {
 
 contract Moulinette is 
     IERC721Receiver, Ownable { 
-    // TODO comment these out
-    address public SUSDE; 
+    // TODO delete these 
+    address public SUSDE;
+    address public SFRAX; 
+    address public SDAI;
+    address public QUID;
     address public WETH; 
     address public WBTC; 
     
     // TODO uncomment these
-    // address constant 
-    // public SUSDE = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
-    // address constant 
-    // public WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    // address constant 
-    // public WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
-    
+    // address constant public SUSDE = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
+    // address constant public SFRAX = 0xA663B02CF0a4b149d2aD41910CB81e23e1c41c32;
+    // address constant public SDAI = 0x83F20F44975D03b1b09e64809B757c47f942BEeA;
+    // address constant public WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    // address constant public WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
+
     // 0.3% fee tier has tick spacing of 60; 
     uint24 constant public POOL_FEE = 3000;  
     uint constant public STACK = BILL * 100;
@@ -54,8 +56,8 @@ contract Moulinette is
     uint public TOKEN_ID; // protocol manages one giant NFT deposit 
     IUniswapV3Pool POOL; // the largest liquidity pool on UNIswapV3
     
-    uint internal _ETH_PRICE; // TODO comment out when finished testing
-    uint internal _BTC_PRICE; // TODO comment out when finished testing
+    uint internal _ETH_PRICE; // TODO delete when finished testing
+    uint internal _BTC_PRICE; // TODO delete when finished testing
     
     // Chainlink AggregatorV3 Addresses on mainnnet
     address constant public ETH_PRICE = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
@@ -85,10 +87,16 @@ contract Moulinette is
     struct Pod { // in the context of most offers,
         uint credit; // sum of (amount x price upon offer)
         uint debit; // actual quantity of tokens pledged 
-        // for USDe, most pledges only need debit, for
-        // address(this) both used (credit is coverage)
-        // ^^^^^^^^^^^^ doesn't use debit for WETH/WBTC
     }
+
+    // TODO make offers transferrable
+    // for quid[pledge].offers[QUID] increment credit variable on any transfer
+        // using snapshots for quid[QUID] at weekly intervals:
+        // snapshot captures both the credit and debit at that moment
+    // any pledge has a time stamp of their last state change
+        // as the time stamp catches up to the timestamp of the latest snapshot
+        // it pulls in shares for each snapshot up to the latest one 
+
     
     constructor(address _susde, address _wbtc, address _weth) Ownable() { // TODO remove parameters and Ownable (only for testing)
         POOL = IUniswapV3Pool(0xCBCdF9626bC03E24f779434178A73a0B4bad62eD);
@@ -99,15 +107,15 @@ contract Moulinette is
         SUSDE = _susde; WBTC = _wbtc; WETH = _weth;
         NFPM = INonfungiblePositionManager(nfpm);
 
-        LAST_TWAP_TICK = _getTWAPtick();        
+        LAST_TWAP_TICK = _getTWAPtick(); QUID = address(this);        
         (UPPER_TICK, LOWER_TICK) = _adjustTicks(LAST_TWAP_TICK);
         INonfungiblePositionManager.MintParams memory params =
             INonfungiblePositionManager.MintParams({
                 token0: WBTC, token1: WETH, fee: POOL_FEE,
                 tickLower: LOWER_TICK, tickUpper: UPPER_TICK,
-                amount0Desired: IERC20(WBTC).balanceOf(address(this)),
-                amount1Desired: IERC20(WETH).balanceOf(address(this)),
-                amount0Min: 0, amount1Min: 0, recipient: address(this),
+                amount0Desired: IERC20(WBTC).balanceOf(QUID),
+                amount1Desired: IERC20(WETH).balanceOf(QUID),
+                amount0Min: 0, amount1Min: 0, recipient: QUID,
                 deadline: block.timestamp });
         (TOKEN_ID,,,) = NFPM.mint(params);
     }
@@ -119,8 +127,12 @@ contract Moulinette is
     function _min(uint _a, uint _b) internal pure returns (uint) {
         return (_a < _b) ? _a : _b;
     }
+
+    function _isDollar(address dollar) internal returns (bool) {
+        return dollar == SUSDE || dollar == SDAI || dollar == SFRAX;
+    }
     
-    // TODO comment out these setters after finish testing, and uncomment in constructor
+    // TODO remove these setters after finish testing, and uncomment in constructor
     function set_price_eth(uint price) external onlyOwner { // set ETH price in USD
         _ETH_PRICE = price;
     }
@@ -180,7 +192,7 @@ contract Moulinette is
         (amount0, 
          amount1) = NFPM.collect(
             INonfungiblePositionManager.CollectParams(TOKEN_ID, 
-                address(this), type(uint128).max, type(uint128).max
+                QUID, type(uint128).max, type(uint128).max
             )
         );
     }
@@ -193,10 +205,10 @@ contract Moulinette is
     internal view returns (uint price) {
         AggregatorV3Interface chainlink; 
         if (token == WETH) {
-            if (_ETH_PRICE > 0) return _ETH_PRICE; // TODO comment out 
+            if (_ETH_PRICE > 0) return _ETH_PRICE; // TODO remove
             chainlink = AggregatorV3Interface(ETH_PRICE);
         } else if (token == WBTC) {
-            if (_BTC_PRICE > 0) return _BTC_PRICE; // TODO comment out
+            if (_BTC_PRICE > 0) return _BTC_PRICE; // TODO remove
             chainlink = AggregatorV3Interface(BTC_PRICE);
         } else {
             revert UnsupportedToken();
@@ -235,10 +247,10 @@ contract Moulinette is
             IWETH(WETH).deposit{value: msg.value}(); 
             amount1 += msg.value;
         }   
-        else if (token == SUSDE) {
-            uint old_stake = pledge.offers[token].debit;
-            pledge.offers[token].debit += amount;
-            quid[address(this)].offers[token].debit += amount;
+        else if (_isDollar(token)) {
+            uint old_stake = pledge.offers[QUID].debit;
+            pledge.offers[QUID].debit += amount;
+            quid[QUID].offers[QUID].debit += amount;
             
             _calculateMedian(pledge.offers[token].debit, 
                 pledge.vote, old_stake, pledge.vote);
@@ -250,11 +262,18 @@ contract Moulinette is
             }
             uint in_dollars = FullMath.mulDiv(price, amount, WAD);
             uint deductible = FullMath.mulDiv(in_dollars, FEE, WAD);
-            pledge.offers[token].credit += in_dollars - deductible;
+            
+            in_dollars -= deductible;
+            pledge.offers[token].credit += in_dollars;
+            quid[QUID].offers[token].credit += in_dollars; 
 
             deductible = FullMath.mulDiv(WAD, deductible, price);
             pledge.offers[token].debit += amount - deductible;
-            quid[address(this)].offers[token].debit += deductible; 
+            quid[QUID].offers[token].debit += deductible; 
+
+            require(quid[QUID].offers[WBTC].credit + 
+                quid[QUID].offers[WETH].credit < quid[QUID].offers[QUID].debit,
+                "cannot insure more than the value of insurance capital on hand");
             
             NFPM.increaseLiquidity(
                 INonfungiblePositionManager.IncreaseLiquidityParams(
@@ -262,7 +281,7 @@ contract Moulinette is
             );
         } 
         TransferHelper.safeTransferFrom(token, 
-            msg.sender, address(this), amount);
+                    msg.sender, QUID, amount);
     }
     
     // You had not sold the tokens to the contract, but they were at
@@ -277,28 +296,28 @@ contract Moulinette is
             uint old_stake = pledge.offers[token].debit;
             // Calculate pro rata in rewards & coverage (debt)
             uint ratio = FullMath.mulDiv(WAD, // % of total USDe
-                amount, quid[address(this)].offers[token].debit);
+                amount, quid[QUID].offers[token].debit);
             
             uint btc_price = _getPrice(WBTC);
             uint rewardsBTC = FullMath.mulDiv(ratio, 
-                quid[address(this)].offers[WBTC].debit, WAD);
+                quid[QUID].offers[WBTC].debit, WAD);
             // BTC rewards withdrawable in a separate transaction
-            quid[address(this)].offers[WBTC].debit -= rewardsBTC;
+            quid[QUID].offers[WBTC].debit -= rewardsBTC;
             pledge.offers[WBTC].debit += rewardsBTC; 
             pledge.offers[WBTC].credit += FullMath.mulDiv(rewardsBTC, 
                                                     btc_price, WAD); 
             uint eth_price = _getPrice(WBTC);
             uint rewardsETH = FullMath.mulDiv(ratio,
-                quid[address(this)].offers[WETH].debit, WAD);
+                quid[QUID].offers[WETH].debit, WAD);
             // ETH rewards withdrawable in a separate transaction
-            quid[address(this)].offers[WETH].debit -= rewardsETH;
+            quid[QUID].offers[WETH].debit -= rewardsETH;
             pledge.offers[WETH].debit += rewardsETH;
             pledge.offers[WETH].credit += FullMath.mulDiv(rewardsETH, 
                                                     eth_price, WAD);
             uint debt = FullMath.mulDiv(
-                quid[address(this)].offers[token].credit, ratio, WAD
+                quid[QUID].offers[token].credit, ratio, WAD
             );
-            quid[address(this)].offers[token].credit -= debt;
+            quid[QUID].offers[token].credit -= debt;
             if (debt > amount) {
                 if (pledge.offers[token].debit > debt) {
                     pledge.offers[token].debit -= debt;
@@ -320,6 +339,9 @@ contract Moulinette is
             uint current_price = _getPrice(token); uint deductible; 
             uint current_value = FullMath.mulDiv(amount, current_price, WAD);
             uint coverable = FullMath.mulDiv(current_price, WAD + 2 * FEE, WAD); 
+            // TODO instead of letting this 2x be static, adjust according
+            // to the insurance rate (derive a heuristic / ratio for them)
+            
             uint average_price = FullMath.mulDiv(WAD, pledge.offers[token].credit, 
                                                       pledge.offers[token].debit);
             if (average_price > coverable) {
@@ -327,21 +349,28 @@ contract Moulinette is
                 // coverage is not the same as if you borrowed at 90 LTV, then 
                 // relinquished your collateral, and walked away with the stables
                 // here, you get your colleteral back, with an additional coverage
-                pledge.offers[SUSDE].debit += coverage; 
+                pledge.offers[QUID].debit += coverage; 
                 // only pay if you've received ^^^^^^^
                 deductible = FullMath.mulDiv(WAD, FullMath.mulDiv(
                     current_value, FEE, WAD), current_price
                 );  
-                quid[address(this)].offers[token].debit += deductible; // assets
-                quid[address(this)].offers[SUSDE].credit += coverage; // liabilities
+                quid[QUID].offers[token].debit += deductible; // assets
+                quid[QUID].offers[QUID].credit += coverage; // liabilities
             }
             pledge.offers[token].debit -= amount;  
-            pledge.offers[token].credit -= current_value;  
+            pledge.offers[token].credit -= _min(current_value, 
+                                pledge.offers[token].credit);
+
+            quid[QUID].offers[token].credit -= _min(current_value, 
+                                quid[QUID].offers[token].credit); 
+
             // Procedure for unwrapping from Uniswap to send the amount...
             // first determine liquidity needed to call decreaseLiquidity:
             uint160 sqrtPriceX96AtTickLower = TickMath.getSqrtPriceAtTick(LOWER_TICK);
             uint160 sqrtPriceX96AtTickUpper = TickMath.getSqrtPriceAtTick(UPPER_TICK);
-            uint amount0; uint amount1; amountToTransfer = amount - deductible;
+            
+            amountToTransfer = amount - deductible;
+            uint amount0; uint amount1; 
             if (token == WETH) {
                 uint128 liquidity = LiquidityAmounts.getLiquidityForAmount1(
                     sqrtPriceX96AtTickUpper, sqrtPriceX96AtTickLower,
@@ -376,6 +405,8 @@ contract Moulinette is
     // Since repackNFT() is relatively costly in terms of gas, 
     // we want to call it rarely...so as a rule of thumb, the  
     // range is roughly 14% total, 7% below TWAP and 7% above 
+    // TODO instead of letting this be static, adjust according
+    // to the insurance rate (derive a heuristic / ratio for them)
     function repaceNFT() external { _repackNFT(); }
     function _repackNFT() internal {
         uint128 liquidity; int24 twap = _getTWAPtick();  
@@ -390,20 +421,20 @@ contract Moulinette is
                 INonfungiblePositionManager.MintParams({
                     token0: WBTC, token1: WETH, fee: POOL_FEE,
                     tickLower: LOWER_TICK, tickUpper: UPPER_TICK,
-                    amount0Desired: IERC20(WBTC).balanceOf(address(this)),
-                    amount1Desired: IERC20(WETH).balanceOf(address(this)),
-                    amount0Min: 0, amount1Min: 0, recipient: address(this),
+                    amount0Desired: IERC20(WBTC).balanceOf(QUID),
+                    amount1Desired: IERC20(WETH).balanceOf(QUID),
+                    amount0Min: 0, amount1Min: 0, recipient: QUID,
                     deadline: block.timestamp });
             (TOKEN_ID,,,) = NFPM.mint(params);
         } 
         else { // no need to repack NFT, but compound
             (uint amount0, uint amount1) = NFPM.collect( // LP fees
                 INonfungiblePositionManager.CollectParams(TOKEN_ID, 
-                    address(this), type(uint128).max, type(uint128).max
+                    QUID, type(uint128).max, type(uint128).max
                 )
             ); 
-            quid[address(this)].offers[WBTC].debit += amount0;
-            quid[address(this)].offers[WETH].debit += amount1;
+            quid[QUID].offers[WBTC].debit += amount0;
+            quid[QUID].offers[WETH].debit += amount1;
             NFPM.increaseLiquidity(
                 INonfungiblePositionManager.IncreaseLiquidityParams(
                     TOKEN_ID, amount0, amount1, 0, 0, block.timestamp
@@ -442,7 +473,7 @@ contract Moulinette is
             pledge.offers[token0].credit += in_dollars - deductible;
             deductible = FullMath.mulDiv(WAD, deductible, price);
             pledge.offers[token0].debit += amount0 - deductible;
-            quid[address(this)].offers[token0].debit += deductible; 
+            quid[QUID].offers[token0].debit += deductible; 
         }
         if (amount1 > 0) { price = _getPrice(token1);
             in_dollars = FullMath.mulDiv(price, amount1, WAD);
@@ -451,7 +482,7 @@ contract Moulinette is
             pledge.offers[token1].credit += in_dollars - deductible;
             deductible = FullMath.mulDiv(WAD, deductible, price);
             pledge.offers[token1].debit += amount1 - deductible;
-            quid[address(this)].offers[token1].debit += deductible; 
+            quid[QUID].offers[token1].debit += deductible; 
         }
         NFPM.increaseLiquidity(
             INonfungiblePositionManager.IncreaseLiquidityParams(TOKEN_ID,
@@ -467,7 +498,7 @@ contract Moulinette is
         pledge.vote = new_vote;
         require(new_vote != old_vote &&
                 new_vote < 89, "bad vote");
-        uint stake = pledge.offers[SUSDE].debit;
+        uint stake = pledge.offers[QUID].debit;
         _calculateMedian(stake, new_vote, 
                          stake, old_vote);
     }
@@ -481,7 +512,7 @@ contract Moulinette is
      */ 
     function _calculateMedian(uint new_stake, uint new_vote, 
         uint old_stake, uint old_vote) internal { 
-        uint total = quid[address(this)].offers[SUSDE].debit;
+        uint total = quid[QUID].offers[QUID].debit;
         if (old_vote != 0 && old_stake != 0) { 
             WEIGHTS[old_vote] -= old_stake;
             if (old_vote <= MEDIAN) {   
