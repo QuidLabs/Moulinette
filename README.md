@@ -17,11 +17,11 @@ V3 pool (fees are auto-compounded
 
 and get distributed to insurers);  
 contract can't insure more than   
-the total value of sUSDe staked  
+the total value of dollars staked  
 as insurance capital (earning  
 pro rata rewards & liabilities).  
 
 The cost of insurance is votable  
 by insurers...using a weighted  
-median of their sUSDe stakes.  
+median of their staked dollars.  
 The range is 1-9% (lumpsum).
