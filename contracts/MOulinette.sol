@@ -238,8 +238,6 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
         amount = _min(amount, IERC20(token).balanceOf(msg.sender));
         
         require(amount > 0, "insufficient balance");
-        uint amount0 = token == WBTC ? amount : 0;
-        uint amount1 = token == WETH ? amount : 0;
         Pledge storage pledge = quid[beneficiary];
         if (pledge.vote == 0) { pledge.vote = 7; }
   
@@ -251,17 +249,20 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
             _calculateMedian(pledge.offers[QUID].debit, 
                 pledge.vote, old_stake, pledge.vote);
         } 
-        else {
-            if (msg.value > 0) { 
-                require(token == WETH, "WETH");
-                // WETH becomes available to address(this)
-                IWETH(WETH).deposit{value: msg.value}(); 
-                amount1 += msg.value;
-            } 
-            uint price = _getPrice(token);     
+        else { 
+            uint amount0; uint amount1; // for Uni LP deposit
             if (token == WBTC) { // has a precision of 8 digits
                 amount *= 10 ** 10; // convert for compatibility
+            } else {
+                amount1 = amount;
+                if (msg.value > 0) { 
+                    require(token == WETH, "WETH");
+                    // WETH becomes available to address(this)
+                    IWETH(WETH).deposit{value: msg.value}(); 
+                    amount1 += msg.value;
+                } 
             }
+            uint price = _getPrice(token);
             uint in_dollars = FullMath.mulDiv(price, amount, WAD);
             uint deductible = FullMath.mulDiv(in_dollars, FEE, WAD);
             
