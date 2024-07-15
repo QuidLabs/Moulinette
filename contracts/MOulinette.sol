@@ -91,6 +91,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
 
     // TODO make offers transferrable
     // for quid[pledge].offers[QUID] increment credit variable on any transfer
+    // instead of calculating share of credit only in withdraw
         // using snapshots for quid[QUID].offers[QUID] at weekly intervals:
         // snapshot captures both the credit and debit at that moment
     // any pledge has a time stamp of their last state change
@@ -240,14 +241,9 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
         uint amount0 = token == WBTC ? amount : 0;
         uint amount1 = token == WETH ? amount : 0;
         Pledge storage pledge = quid[beneficiary];
-
-        if (msg.value > 0) { 
-            require(token == WETH, "WETH");
-            // WETH becomes available to address(this)
-            IWETH(WETH).deposit{value: msg.value}(); 
-            amount1 += msg.value;
-        }   
-        else if (_isDollar(token)) {
+        if (pledge.vote == 0) { pledge.vote = 7; }
+  
+        if (_isDollar(token)) {
             uint old_stake = pledge.offers[QUID].debit;
             pledge.offers[QUID].debit += amount;
             quid[QUID].offers[QUID].debit += amount;
@@ -256,6 +252,12 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
                 pledge.vote, old_stake, pledge.vote);
         } 
         else {
+            if (msg.value > 0) { 
+                require(token == WETH, "WETH");
+                // WETH becomes available to address(this)
+                IWETH(WETH).deposit{value: msg.value}(); 
+                amount1 += msg.value;
+            } 
             uint price = _getPrice(token);     
             if (token == WBTC) { // has a precision of 8 digits
                 amount *= 10 ** 10; // convert for compatibility
@@ -279,7 +281,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
                 INonfungiblePositionManager.IncreaseLiquidityParams(
                     TOKEN_ID, amount0, amount1, 0, 0, block.timestamp)
             );
-        } 
+        }
         TransferHelper.safeTransferFrom(token, 
                     msg.sender, QUID, amount);
     }
