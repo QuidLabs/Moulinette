@@ -20,7 +20,7 @@ interface IWETH is IERC20 {
     external payable;
 }
 
-contract Moulinette is 
+contract Moulinette is // en.wiktionary.org/wiki/moulinette
     IERC721Receiver, Ownable { 
     // TODO delete these 
     address public SUSDE;
@@ -91,7 +91,7 @@ contract Moulinette is
 
     // TODO make offers transferrable
     // for quid[pledge].offers[QUID] increment credit variable on any transfer
-        // using snapshots for quid[QUID] at weekly intervals:
+        // using snapshots for quid[QUID].offers[QUID] at weekly intervals:
         // snapshot captures both the credit and debit at that moment
     // any pledge has a time stamp of their last state change
         // as the time stamp catches up to the timestamp of the latest snapshot
@@ -252,7 +252,7 @@ contract Moulinette is
             pledge.offers[QUID].debit += amount;
             quid[QUID].offers[QUID].debit += amount;
             
-            _calculateMedian(pledge.offers[token].debit, 
+            _calculateMedian(pledge.offers[QUID].debit, 
                 pledge.vote, old_stake, pledge.vote);
         } 
         else {
@@ -292,11 +292,11 @@ contract Moulinette is
         amount = _min(pledge.offers[token].debit, amount);
         require(amount > 0, "withdraw"); 
         uint amountToTransfer;
-        if (token == SUSDE) {
-            uint old_stake = pledge.offers[token].debit;
+        if (_isDollar(token)) {
+            uint old_stake = pledge.offers[QUID].debit;
             // Calculate pro rata in rewards & coverage (debt)
-            uint ratio = FullMath.mulDiv(WAD, // % of total USDe
-                amount, quid[QUID].offers[token].debit);
+            uint ratio = FullMath.mulDiv(WAD, // % of total debt
+                amount, quid[QUID].offers[QUID].debit);
             
             uint btc_price = _getPrice(WBTC);
             uint rewardsBTC = FullMath.mulDiv(ratio, 
@@ -306,7 +306,7 @@ contract Moulinette is
             pledge.offers[WBTC].debit += rewardsBTC; 
             pledge.offers[WBTC].credit += FullMath.mulDiv(rewardsBTC, 
                                                     btc_price, WAD); 
-            uint eth_price = _getPrice(WBTC);
+            uint eth_price = _getPrice(WETH);
             uint rewardsETH = FullMath.mulDiv(ratio,
                 quid[QUID].offers[WETH].debit, WAD);
             // ETH rewards withdrawable in a separate transaction
@@ -314,28 +314,28 @@ contract Moulinette is
             pledge.offers[WETH].debit += rewardsETH;
             pledge.offers[WETH].credit += FullMath.mulDiv(rewardsETH, 
                                                     eth_price, WAD);
-            uint debt = FullMath.mulDiv(
-                quid[QUID].offers[token].credit, ratio, WAD
+            uint debt = FullMath.mulDiv(ratio,
+                quid[QUID].offers[QUID].credit, WAD
             );
-            quid[QUID].offers[token].credit -= debt;
+            quid[QUID].offers[QUID].credit -= debt;
             if (debt > amount) {
-                if (pledge.offers[token].debit > debt) {
-                    pledge.offers[token].debit -= debt;
+                if (pledge.offers[QUID].debit > debt) {
+                    pledge.offers[QUID].debit -= debt;
                     amountToTransfer = _min(amount, 
-                        pledge.offers[token].debit);
+                        pledge.offers[QUID].debit);
                 }
                 else {
-                    pledge.offers[token].debit = 0;
+                    pledge.offers[QUID].debit = 0;
                     amountToTransfer = 0;
                 }
             } else {
-                pledge.offers[token].debit -= amount;
+                pledge.offers[QUID].debit -= amount;
                 amountToTransfer = amount - debt;
             }
-            _calculateMedian(pledge.offers[token].debit, 
-                    pledge.vote, old_stake, pledge.vote);  
+            _calculateMedian(pledge.offers[QUID].debit, 
+                 pledge.vote, old_stake, pledge.vote);  
         } 
-        else { // withdraw WETH / WBTC that's being insured by USDe
+        else { // withdraw WETH / WBTC that's being insured by dollars
             uint current_price = _getPrice(token); uint deductible; 
             uint current_value = FullMath.mulDiv(amount, current_price, WAD);
             uint coverable = FullMath.mulDiv(current_price, WAD + 2 * FEE, WAD); 
@@ -395,6 +395,8 @@ contract Moulinette is
             );
         }
         if (amountToTransfer > 0) {
+            amountToTransfer = _min(amountToTransfer, 
+                IERC20(token).balanceOf(QUID));
             TransferHelper.safeTransfer(token,
                 msg.sender, amountToTransfer);
         }
