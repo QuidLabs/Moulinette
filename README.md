@@ -1,13 +1,12 @@
 
-## Earn +30% with sUSDe
+## Earn 30% more with...
 
-On top of the current 7% staking  
-reward for USDe (this seems to  
-be the floor rate) you can earn  
-even more (with the possibility  
-of slashing some of your stake).  
+### sUSDe / sDAI / sFRAX
 
-The counterparty to this:   
+Earn extra (with the possibility  
+of slashing some of your stake);  
+
+the counterparty to this:   
 token-holders wishing to  
 insure against price drops.
 
