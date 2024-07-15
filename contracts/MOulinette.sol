@@ -66,7 +66,7 @@ contract Moulinette is
     // index 0 represents largest possibility = 9%
     // index 89 represents the smallest one = 1%
     // derivation of FEE = WAD / (index + 11)...
-    uint internal MEDIAN; // approx. index of median (+/- 1)
+    uint internal MEDIAN = 17; // index of median (+/- 1)
     uint internal SUM; // sum(weights[0..k]) sum of sums...
     struct Pledge { 
         // An offer is a promise or commitment to do
@@ -229,7 +229,6 @@ contract Moulinette is
         uint amount1 = token == WETH ? amount : 0;
         Pledge storage pledge = quid[beneficiary];
 
-        _repackNFT();
         if (msg.value > 0) { 
             require(token == WETH, "WETH");
             // WETH becomes available to address(this)
@@ -269,17 +268,15 @@ contract Moulinette is
     // You had not sold the tokens to the contract, but they were at
     // at stake in an offering (an option contract for coverage)...
     function withdraw(address token,
-        uint amount) external { uint coverage;
+        uint amount) external { _repackNFT();
         Pledge storage pledge = quid[msg.sender];
-        
         amount = _min(pledge.offers[token].debit, amount);
-        require(amount > 0, "withdraw"); uint amountToTransfer;
-        
-        _repackNFT();
+        require(amount > 0, "withdraw"); 
+        uint amountToTransfer;
         if (token == SUSDE) {
             uint old_stake = pledge.offers[token].debit;
-            // Calculate pro rata in rewards & coverage...
-            uint ratio = FullMath.mulDiv(WAD, // % of total USDe...
+            // Calculate pro rata in rewards & coverage (debt)
+            uint ratio = FullMath.mulDiv(WAD, // % of total USDe
                 amount, quid[address(this)].offers[token].debit);
             
             uint btc_price = _getPrice(WBTC);
@@ -298,33 +295,45 @@ contract Moulinette is
             pledge.offers[WETH].debit += rewardsETH;
             pledge.offers[WETH].credit += FullMath.mulDiv(rewardsETH, 
                                                     eth_price, WAD);
-            coverage = FullMath.mulDiv(ratio,
-                quid[address(this)].offers[token].credit, WAD);
-
-            quid[address(this)].offers[token].credit -= coverage;
-            pledge.offers[token].debit -= amount + coverage;
-            amountToTransfer = amount - coverage;
-
+            uint debt = FullMath.mulDiv(
+                quid[address(this)].offers[token].credit, ratio, WAD
+            );
+            quid[address(this)].offers[token].credit -= debt;
+            if (debt > amount) {
+                if (pledge.offers[token].debit > debt) {
+                    pledge.offers[token].debit -= debt;
+                    amountToTransfer = _min(amount, 
+                        pledge.offers[token].debit);
+                }
+                else {
+                    pledge.offers[token].debit = 0;
+                    amountToTransfer = 0;
+                }
+            } else {
+                pledge.offers[token].debit -= amount;
+                amountToTransfer = amount - debt;
+            }
             _calculateMedian(pledge.offers[token].debit, 
                     pledge.vote, old_stake, pledge.vote);  
-        } else { // withdraw WETH / WBTC that's being insured by USDe
+        } 
+        else { // withdraw WETH / WBTC that's being insured by USDe
             uint current_price = _getPrice(token); uint deductible; 
             uint current_value = FullMath.mulDiv(amount, current_price, WAD);
-            uint coverable = FullMath.mulDiv(current_price, WAD + 3 * FEE, WAD); // TODO
+            uint coverable = FullMath.mulDiv(current_price, WAD + 2 * FEE, WAD); 
             uint average_price = FullMath.mulDiv(WAD, pledge.offers[token].credit, 
                                                       pledge.offers[token].debit);
-            if (average_price > coverable) { // more than an 11% drop is an insured event
-                coverage = FullMath.mulDiv(amount, average_price, WAD) - current_value;
+            if (average_price > coverable) {
+                uint coverage = FullMath.mulDiv(amount, average_price, WAD) - current_value;
                 // coverage is not the same as if you borrowed at 90 LTV, then 
                 // relinquished your collateral, and walked away with the stables
                 // here, you get your colleteral back, with an additional coverage
                 pledge.offers[SUSDE].debit += coverage; 
-                // if you withdraw assets, but don't receive coverage, you don't pay
+                // only pay if you've received ^^^^^^^
                 deductible = FullMath.mulDiv(WAD, FullMath.mulDiv(
                     current_value, FEE, WAD), current_price
                 );  
-                quid[address(this)].offers[token].debit += deductible;
-                quid[address(this)].offers[SUSDE].credit += coverage;
+                quid[address(this)].offers[token].debit += deductible; // assets
+                quid[address(this)].offers[SUSDE].credit += coverage; // liabilities
             }
             pledge.offers[token].debit -= amount;  
             pledge.offers[token].credit -= current_value;  
@@ -356,8 +365,10 @@ contract Moulinette is
                 )
             );
         }
-        TransferHelper.safeTransfer(token,
-            msg.sender, amountToTransfer);
+        if (amountToTransfer > 0) {
+            TransferHelper.safeTransfer(token,
+                msg.sender, amountToTransfer);
+        }
     }
     
     // We want to make sure that all of the WETH and / or WBTC
