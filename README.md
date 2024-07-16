@@ -3,10 +3,12 @@
 
 ### sUSDe / sDAI / sFRAX
 
-Earn extra (with the possibility  
-of slashing some of your stake);  
+Same founding principle as Eigen:  
+earn extra (with the possibility  
+of slashing some of your stake,  
+due to encumbering extra risk).  
 
-the counterparty to this:   
+The counterparty to this:   
 token-holders wishing to  
 insure against price drops.
 

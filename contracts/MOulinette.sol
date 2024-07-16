@@ -239,7 +239,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
         
         require(amount > 0, "insufficient balance");
         Pledge storage pledge = quid[beneficiary];
-        if (pledge.vote == 0) { pledge.vote = 7; }
+        if (pledge.vote == 0) { pledge.vote = 17; }
   
         if (_isDollar(token)) {
             uint old_stake = pledge.offers[QUID].debit;
@@ -256,7 +256,6 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
             } else {
                 amount1 = amount;
                 if (msg.value > 0) { 
-                    require(token == WETH, "WETH");
                     // WETH becomes available to address(this)
                     IWETH(WETH).deposit{value: msg.value}(); 
                     amount1 += msg.value;
@@ -275,7 +274,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
             quid[QUID].offers[token].debit += deductible; 
 
             require(quid[QUID].offers[WBTC].credit + 
-                quid[QUID].offers[WETH].credit < quid[QUID].offers[QUID].debit,
+                quid[QUID].offers[WETH].credit < quid[QUID].offers[QUID].debit * 2,
                 "cannot insure more than the value of insurance capital on hand");
             
             NFPM.increaseLiquidity(
@@ -518,7 +517,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     function _calculateMedian(uint new_stake, uint new_vote, 
         uint old_stake, uint old_vote) internal { 
         uint total = quid[QUID].offers[QUID].debit;
-        if (old_vote != 0 && old_stake != 0) { 
+        if (old_vote != 17 && old_stake != 0) { 
             WEIGHTS[old_vote] -= old_stake;
             if (old_vote <= MEDIAN) {   
                 SUM -= old_stake;
