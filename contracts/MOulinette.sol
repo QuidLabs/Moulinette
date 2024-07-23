@@ -429,9 +429,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
                     deadline: block.timestamp });
             (TOKEN_ID,,,) = NFPM.mint(params);
         }
-        fee = FullMath.mulDiv(MAX_PER_DAY, FEE, WAD);
-        _mint(beneficiary, MAX_PER_DAY - fee); 
-        _mint(QUID, fee); START_PRICE += PENNY;
+        _mint(beneficiary, MAX_PER_DAY); START_PRICE += PENNY;
     }
 
     // redeem the QD balance (minus liabilities):
@@ -444,7 +442,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
         Pledge storage pledge = quid[beneficiary];
 
         if (block.timestamp > START_DATE + 8 * DAYS) {
-            require(_capitalisation(0) >= 80, "wait"); 
+            require(_capitalisation(0) >= 88, "wait"); 
 
             // TODO absorb = credit / SUM_ROI x coverage
             // coverage -= absorb
@@ -491,7 +489,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
                 FullMath.mulDiv(price, amount, WAD)
             );
             amount = FullMath.mulDiv(WAD, cost, price);
-            uint fee = FullMath.mulDiv(amount, FEE, WAD);
+            uint fee = FullMath.mulDiv(amount, FEE / 4, WAD);
             uint minted = amount - fee; amount = cost; 
             _mint(beneficiary, minted); _mint(JOHN, fee); 
 
@@ -559,7 +557,6 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
         if (average_price > coverable) {
             uint coverage = FullMath.mulDiv(amount, 
                 average_price, WAD) - current_value;
-
            
             if (_capitalisation(coverage) >= 50) { _mint(msg.sender, coverage);
                 deductible = FullMath.mulDiv(WAD, FullMath.mulDiv(
