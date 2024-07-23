@@ -1,7 +1,8 @@
 
 ## *L*iquidity-*I*nsuring *T*oken
 
-QD is a LIT, lite ERC404.   
+QD is a LIT, lite ERC404.  
+The `tokenURI` is coming.     
 After [maturing](https://www.investopedia.com/terms/z/zero-couponbond.asp)...1 QD can  
 be redeemed for $1. There's  
 a "discount window" during  
