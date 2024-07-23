@@ -1,29 +1,52 @@
 
-## Earn 30% more with...
+## *L*iquidity-*I*nsuring *T*oken
 
-### sUSDe / sDAI / sFRAX
+QD is a LIT, lite ERC404.   
+After [maturing](https://www.investopedia.com/terms/z/zero-couponbond.asp)...1 QD can  
+be redeemed for $1. There's  
+a "discount window" during  
+which QD is mintable for [46  
+days](https://bit.ly/3q4tShS) if we consider ~7 % to  
+be the minimum for staking  
+rewards, then QD will be  
+73% backed at the end...  
 
-Same founding principle as Eigen:  
-earn extra (with the possibility  
-of slashing some of your stake,  
-due to encumbering extra risk).  
+### re-stake sUSDe / sDAI
 
-The counterparty to this:   
-token-holders wishing to  
-insure against price drops.
+Same basic principle as Eigen:  
+earn extra (possibily slashing  
+some stake due to encumbering  
+extra risk). The counterparty  
+to this: token-holders that  
+wish to insure their ETH and  
+/ or WBTC against price drops  
+(coverage dilutes QD yield).  
 
-While insured by the contract...ETH  
-and wBTC tokens are also deployed  
-as LP capital in the largest Uniswap  
-V3 pool (fees are auto-compounded  
+The "non-fungible" nature  
+of the `_balances` relates  
+to their individual ROIs,  
+which will determine how  
+much liabilties they must  
+absorb; those more able  
+to absorb...will absorb  
+more ("fair" taxation).  
 
-and get distributed to insurers);  
-contract can't insure more than   
-the total value of dollars staked  
-as insurance capital (earning  
-pro rata rewards & liabilities).  
+While insured by the contract  
+tokens are also deployed as LP  
+capital in the largest Uniswap  
+V3 pool (fees auto-compounded,  
+and retained for backing QD).  
 
-The cost of insurance is votable  
-by insurers...using a weighted  
-median of their staked dollars.  
-The range is 1-9% (lumpsum).
+The total $ value of tokens  
+insured cannot exceed the $  
+staked as insurance capital,  
+and the total coverage that  
+be extended is also capped.  
+
+LPs can vote for what the  
+% deductible is (half gets  
+charged upfront, half on  
+withdrawal if an insured  
+event is triggered). An  
+insured event is a price  
+drop of 2 x deductible %.  
