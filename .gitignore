@@ -9,3 +9,5 @@
 /coverage
 /coverage.json
 package-lock.json
+
+/frontend/node_modules

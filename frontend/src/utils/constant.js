@@ -1,7 +1,7 @@
 
 // TODO replace address
-export const addressQD = '0x610a54ec87aA75231420CF76C99983aAb12A28B8';
-export const addressSDAI = '0xE4B4EBf869F9BfC1702CAc0aCA4177601A59bb88';
+export const addressQD = '0xd6018be1FDfeF72127550129F3eee8Ebc0471EA4';
+export const addressSDAI = '0xEAbC84213345DF539b30602bfC31ef5b5973D3B3';
 
 // TODO replace constructor
 // {
@@ -485,6 +485,30 @@ export const QUID = [
     {
       "inputs": [
         {
+          "internalType": "address",
+          "name": "who",
+          "type": "address"
+        }
+      ],
+      "name": "get_info",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "uint256",
           "name": "block_timestamp",
           "type": "uint256"
@@ -610,13 +634,6 @@ export const QUID = [
         }
       ],
       "name": "redeem",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "repackNFT",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

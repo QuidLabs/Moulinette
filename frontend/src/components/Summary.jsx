@@ -28,7 +28,7 @@ export const Summary = () => {
       if (quid && sdai && addressQD) {
         const qdAmount = parseUnits("1", 18).toBigInt()
 
-        quid.methods.qd_amt_to_sdai_amt(qdAmount, currentTimestamp)
+        quid.methods.qd_amt_to_dollar_amt(qdAmount, currentTimestamp)
           .call()
           .then(data => {
             const value = Number(formatUnits(data, 18) * 100)
@@ -38,7 +38,7 @@ export const Summary = () => {
             if (bigNumber > 100) { setBigNumber(BigNumber.from(100)) } setPrice(String(bigNumber))
           })
 
-        quid.methods.get_total_supply()
+        quid.methods.totalSupply()
           .call()
           .then(totalSupply => {
             setTotalMinted(formatUnits(totalSupply, 18).split(".")[0])
@@ -58,14 +58,14 @@ export const Summary = () => {
   const getSales = useCallback(() => {
     try {
       if (quid && sdai && addressQD) {
-        quid.methods.LENT()
+        quid.methods.DAYS()
           .call()
           .then(data => {
             console.log(data)
             setMintPeriodDays(String(Number(data) / SECONDS_IN_DAY))
           })
 
-        quid.methods.sale_start()
+        quid.methods.START_DATE()
           .call()
           .then(data => {
             setSmartContractStartTimestamp(data.toString())

@@ -44,7 +44,7 @@ export const Mint = () => {
   const qdAmountToSdaiAmt = async (qdAmount, delay = 0) => {
     const currentTimestamp = (Date.now() / 1000 + delay).toFixed(0)
 
-    const qdAmountCall = quid ? await quid.methods.qd_amt_to_sdai_amt(qdAmount, currentTimestamp).call() : 0
+    const qdAmountCall = quid ? await quid.methods.qd_amt_to_dollar_amt(qdAmount, currentTimestamp).call() : 0
 
     return qdAmountCall
   }
@@ -70,7 +70,7 @@ export const Mint = () => {
       if (quid) {
         Promise.all([
           quid.methods.get_total_supply_cap(currentTimestamp).call(),
-          quid.methods.get_total_supply().call()
+          quid.methods.totalSupply().call()
         ]).then(([totalSupplyCap, totalSupply]) => {
           const totalSupplyCapInt = parseInt(formatUnits(totalSupplyCap, 18))
           setTotalSupply(parseInt(formatUnits(totalSupply, 18)).toString())
@@ -256,7 +256,7 @@ export const Mint = () => {
         formatUnits(allowanceBeforeMinting, 18)
       )
 
-      await quid.methods.mint(qdAmount, beneficiaryAccount).call()
+      await quid.methods.deposit(beneficiaryAccount, qdAmount, addressSDAI).call()
 
       notify({
         severity: "success",

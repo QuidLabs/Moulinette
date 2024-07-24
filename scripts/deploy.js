@@ -20,9 +20,7 @@ async function main() { // rinkeby:
     console.log('deploying MO');
     let MO = await ethers.getContractFactory("Moulinette");
 
-    const mo = await MO.deploy(USDeToken, {
-      gasLimit: 3000000 // Set a high gas limit (adjust this value as needed)
-    })
+    const mo = await MO.deploy(USDeToken)
     console.log(await mo.getAddress())
   } catch (error) {
      console.error('Error in deployment:', error);
