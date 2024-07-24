@@ -24,26 +24,24 @@ interface IWETH is IERC20 {
 
 contract Moulinette is // en.wiktionary.org/wiki/moulinette
     IERC721Receiver, ERC20 { // TODO tokenUri for 404 ;)
-    // TODO delete these 
-    
+
     address public SUSDE;
-    address public SDAI;
-    
     address public JOHN;
     address public QUID;
     
-    address public WETH; 
-    address public WBTC; 
+    // TODO comment these out (sepolia testnet)
+    address public WETH = 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14; 
+    address public WBTC = 0x29f2D40B0605204364af54EC677bD022dA425d03; 
     
-    // TODO uncomment these
+    // TODO uncomment these for mainnet deployment
     // address constant public SUSDE = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
     // address constant public SDAI = 0x83F20F44975D03b1b09e64809B757c47f942BEeA;
-    
     // address constant public WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     // address constant public WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
+
     uint constant public MAX_PER_DAY = 7_777_777 * WAD; // mint cap (QD supply)
-    uint constant public DAYS = 46 days; // of Lent
-    uint public START_PRICE = 42 * PENNY; // to 44
+    uint constant public DAYS = 40 days; // and nights
+    uint public START_PRICE = 50 * PENNY; // till 89
     Pod[DAYS] Offering; uint public START_DATE;
     uint public AVG_ROI; uint public SUM_ROI; 
     // Sum: (QD / Total QD) x (ROI / AVG_ROI)
@@ -53,6 +51,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     uint constant public STACK = BILL * 100;
     uint constant public PENNY = WAD / 100;
     uint constant public BILL = 100 * WAD;
+    uint constant public BAG = 100 * STACK;
 
     uint constant public WAD = 1e18; 
     INonfungiblePositionManager NFPM;
@@ -61,7 +60,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     // TODO VWMP in milestone 1 ?
     int24 internal UPPER_TICK; 
     int24 internal LOWER_TICK;
-    
+    error UnsupportedToken();
     uint public TOKEN_ID; // protocol manages one giant NFT deposit 
     IUniswapV3Pool POOL; // the largest liquidity pool on UNIswapV3
 
@@ -71,7 +70,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     // Chainlink AggregatorV3 Addresses on mainnnet
     address constant public ETH_PRICE = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address constant public BTC_PRICE = 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c;
-    error UnsupportedToken();
+    
     // The following 3 variables are used to _calculateMedian
     uint[90] internal WEIGHTS; // sum of weights for each FEE
     // index 0 represents largest possibility = 9%
@@ -100,21 +99,47 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     } // for QD, credit is the contribution to weighted
     // sum of (QD / total QD) times (ROI / avg ROI)...
     
-    constructor(address _susde, 
-    address _wbtc, address _weth) ERC20("QU!D", "QD") { // TODO remove parameters (only for testing)
-        POOL = IUniswapV3Pool(0xCBCdF9626bC03E24f779434178A73a0B4bad62eD);
-        address nfpm = 0xC36442b4a4522E871399CD717aBDD847Ab11FE88;
+    // TODO remove _susde constructor param (for Sepolia testing only)...
+    constructor(address _susde /* address[] round */) ERC20("QU!D", "QD") { 
+        
+        POOL = IUniswapV3Pool(0xD1787BA366fea7F69212Dfc0a3637ACfEFdf7f25);
+        // TODO replace address (below is for mainnet deployment)
+        // POOL = IUniswapV3Pool(0xCBCdF9626bC03E24f779434178A73a0B4bad62eD);
+
+        address nfpm = 0x1238536071E1c677A632429e3655c799b22cDA52;
+        // TODO replace address (below is for mainnet deployment)
+        // address nfpm = 0xC36442b4a4522E871399CD717aBDD847Ab11FE88;
+        
         TransferHelper.safeApprove(WETH, nfpm, type(uint256).max);
         TransferHelper.safeApprove(WBTC, nfpm, type(uint256).max);
-        
-        SUSDE = _susde; WBTC = _wbtc; WETH = _weth;
-        NFPM = INonfungiblePositionManager(nfpm);
-        JOHN = msg.sender; QUID = address(this); 
-    }
 
-    modifier isSeeded {
-        require(TOKEN_ID != 0, "NFT");
-        _;
+        TransferHelper.safeTransfer(WETH, QUID, 
+            IERC20(WETH).balanceOf(msg.sender));
+        
+        TransferHelper.safeTransfer(WBTC, QUID,
+            IERC20(WBTC).balanceOf(msg.sender));
+
+        SUSDE = _susde; NFPM = INonfungiblePositionManager(nfpm);
+        LAST_TWAP_TICK = _getTWAPtick(); QUID = address(this);        
+        (UPPER_TICK, LOWER_TICK) = _adjustTicks(LAST_TWAP_TICK);
+        INonfungiblePositionManager.MintParams memory params =
+            INonfungiblePositionManager.MintParams({
+                token0: WBTC, token1: WETH, fee: POOL_FEE,
+                tickLower: LOWER_TICK, tickUpper: UPPER_TICK,
+                amount0Desired: IERC20(WBTC).balanceOf(QUID),
+                amount1Desired: IERC20(WETH).balanceOf(QUID),
+                amount0Min: 0, amount1Min: 0, recipient: QUID,
+                deadline: block.timestamp });
+        (TOKEN_ID,,,) = NFPM.mint(params);
+        
+        /*
+        _mint(JOHN, BAG); _mint(QUID, 10 * BAG);
+        uint cut = balanceOf(QUID) / round.length;
+        for (uint i = 0; i < round.length; i++) {
+            _transfer(QUID, round[i], cut);
+        } 
+        */
+
     }
 
     modifier isAfter {
@@ -192,7 +217,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     }
 
     function _isDollar(address dollar) internal view returns 
-        (bool) { return dollar == SUSDE || dollar == SDAI; }
+        (bool) { return dollar == SUSDE; /* || dollar == SDAI; */ } // TODO uncomment for mainnet
 
     function _decreaseAndCollect(uint128 liquidity) 
         internal returns (uint amount0, uint amount1) {
@@ -377,61 +402,6 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
                          stake, old_vote);
     }
 
-    // Only callable twice, beneficiary is both 
-    // insurer, and also insured by the protocol 
-    function seed(address beneficiary) external {
-        require(TOKEN_ID == 0, "already seeded");
-        Pledge storage pledge = quid[beneficiary];
-        uint cost = START_PRICE * MAX_PER_DAY / WAD;
-    
-        uint half = cost / 2; LAST_TWAP_TICK = _getTWAPtick(); 
-        (UPPER_TICK, LOWER_TICK) = _adjustTicks(LAST_TWAP_TICK); 
-        uint deductible = FullMath.mulDiv(half, 2 * FEE, WAD); 
-
-        pledge.offers[QUID].debit = cost - 2 * deductible;
-        // operational expenditure for R&D (Quid Labs) 
-        quid[JOHN].offers[WBTC].credit += deductible; 
-        quid[JOHN].offers[WETH].credit += deductible; 
-        
-        uint credited = half - deductible;
-        uint eth_price = _getPrice(WETH);
-        uint btc_price = _getPrice(WBTC);
-        
-        uint fee = FullMath.mulDiv(WAD, deductible, eth_price);  
-        uint eth = FullMath.mulDiv(WAD, half, eth_price);
-
-        quid[JOHN].offers[WETH].debit += fee; 
-        pledge.offers[WETH].debit = eth - fee;
-        pledge.offers[WETH].credit = credited;
-
-        fee = FullMath.mulDiv(WAD, deductible, btc_price);  
-        uint btc = FullMath.mulDiv(WAD, half, btc_price); 
-        
-        quid[JOHN].offers[WBTC].debit += fee; 
-        pledge.offers[WBTC].debit = btc - fee;
-        pledge.offers[WBTC].credit = credited; 
-        btc /= 10 ** 10; // for mint precision    
-
-        TransferHelper.safeTransferFrom(WETH, 
-            msg.sender, address(this), eth);
-
-        TransferHelper.safeTransferFrom(WBTC, 
-            msg.sender, address(this), btc);
-
-        if (START_PRICE == 43 * PENNY) { // 2 tranches for seeding
-            INonfungiblePositionManager.MintParams memory params =
-                INonfungiblePositionManager.MintParams({
-                    token0: WBTC, token1: WETH, fee: POOL_FEE,
-                    tickLower: LOWER_TICK, tickUpper: UPPER_TICK,
-                    amount0Desired: IERC20(WBTC).balanceOf(QUID),
-                    amount1Desired: IERC20(WETH).balanceOf(QUID),
-                    amount0Min: 0, amount1Min: 0, recipient: QUID,
-                    deadline: block.timestamp });
-            (TOKEN_ID,,,) = NFPM.mint(params);
-        }
-        _mint(beneficiary, MAX_PER_DAY); START_PRICE += PENNY;
-    }
-
     // redeem the QD balance (minus liabilities):
     // calculates the coverage absorption for each 
     // insurer by first determining their share %
@@ -471,7 +441,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     }
 
     function deposit(address beneficiary, uint amount,
-             address token) external payable isSeeded {
+             address token) external payable {
         
         Pledge storage pledge = quid[beneficiary];
         if (pledge.vote == 0) { pledge.vote = 17; }
@@ -489,9 +459,10 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
                 FullMath.mulDiv(price, amount, WAD)
             );
             amount = FullMath.mulDiv(WAD, cost, price);
-            uint fee = FullMath.mulDiv(amount, FEE / 4, WAD);
+            uint fee = FullMath.mulDiv(amount, FEE, WAD);
             uint minted = amount - fee; amount = cost; 
-            _mint(beneficiary, minted); _mint(JOHN, fee); 
+            // fee already distributed in constructor
+            _mint(beneficiary, minted); 
 
             offering.credit += minted; offering.debit += cost;
             quid[QUID].offers[QUID].debit += cost;
@@ -539,8 +510,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     
     // You had not sold the tokens to the contract, but they were at
     // at stake in an offering (an option contract for coverage)...
-    function withdraw(address token, uint amount) external isSeeded isAfter { 
-    
+    function withdraw(address token, uint amount) external isAfter { 
         _repackNFT(); Pledge storage pledge = quid[msg.sender];
         amount = _min(pledge.offers[token].debit, amount);
         require(amount > 0, "withdraw"); uint amountToTransfer;

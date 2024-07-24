@@ -1,16 +1,16 @@
 
 ## *L*iquidity-*I*nsuring *T*oken
 
-QD is a LIT, lite ERC404.  
-The `tokenURI` is coming.     
-After [maturing](https://www.investopedia.com/terms/z/zero-couponbond.asp)...1 QD can  
+QD is a LIT, lite ERC404...  
+the `tokenURI` will arrive  
+after [maturing](https://www.investopedia.com/terms/z/zero-couponbond.asp)...1 QD can  
 be redeemed for $1. There's  
 a "discount window" during  
-which QD is mintable for [46  
+which QD is mintable for [40  
 days](https://bit.ly/3q4tShS) if we consider ~7 % to  
 be the minimum for staking  
 rewards, then QD will be  
-73% backed at the end...  
+76% backed at the end...  
 
 ### re-stake sUSDe / sDAI
 

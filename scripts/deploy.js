@@ -8,30 +8,25 @@ async function getContract(name, addr) {
 }
 
 async function main() { // rinkeby:
-  // const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  console.log('deploy mock');
-  let Mock = await ethers.getContractFactory("mock");
-  
-  const mockUSDe = await Mock.deploy();
-  const USDeToken = await mockUSDe.getAddress()
-  console.log('USDeToken deployed at', USDeToken)
+  try {
+    // const currentTimestampInSeconds = Math.round(Date.now() / 1000);
+    console.log('deploy mock');
+    let Mock = await ethers.getContractFactory("mock");
+    
+    const mockUSDe = await Mock.deploy();
+    const USDeToken = await mockUSDe.getAddress()
+    console.log('USDeToken deployed at', USDeToken)
 
-  const mockWBTC = await Mock.deploy();
-  const WBTCtoken = await mockWBTC.getAddress()
-  console.log('WBTCtoken deployed at', WBTCtoken)
-  
-  const mockWETH = await Mock.deploy();
-  const WETHtoken = await mockWETH.getAddress()
-  console.log('WETHtoken deployed at', WETHtoken)
-  
+    console.log('deploying MO');
+    let MO = await ethers.getContractFactory("Moulinette");
 
-  console.log('deploying MO');
-  let MO = await ethers.getContractFactory("Moulinette");
-
-  const mo = await MO.deploy(USDeToken, WBTCtoken, WETHtoken)
-  
-  console.log(await mo.getAddress())
- 
+    const mo = await MO.deploy(USDeToken, {
+      gasLimit: 3000000 // Set a high gas limit (adjust this value as needed)
+    })
+    console.log(await mo.getAddress())
+  } catch (error) {
+     console.error('Error in deployment:', error);
+  }
 }  
   
 // We recommend this pattern to be able to use async/await everywhere
