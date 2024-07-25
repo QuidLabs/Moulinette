@@ -1,7 +1,7 @@
 
 // TODO replace address
-export const addressQD = '0xd6018be1FDfeF72127550129F3eee8Ebc0471EA4';
-export const addressSDAI = '0xEAbC84213345DF539b30602bfC31ef5b5973D3B3';
+export const addressQD = '0x8aaF6e27716b76B5E8bB872dD1aa342535d45f3D';
+export const addressSDAI = '0x26459506a7fbEa0Af00631dcb61d491130C77bBC';
 
 // TODO replace constructor
 // {
@@ -961,18 +961,7 @@ export const SDAI = [
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "who",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
+    "inputs": [],
     "name": "mint",
     "outputs": [],
     "stateMutability": "nonpayable",
