@@ -10,7 +10,7 @@ which QD is mintable for [40
 days](https://bit.ly/3q4tShS) if we consider ~7 % to  
 be the minimum for staking  
 rewards, then QD will be  
-76% backed at the end...  
+76% backed to start off.  
 
 ### re-stake sUSDe / sDAI
 
@@ -44,7 +44,8 @@ staked as insurance capital,
 and the total coverage that  
 be extended is also capped.  
 
-LPs can vote for what the  
+A stake-weighted median of
+LPs' votes forms what the  
 % deductible is (half gets  
 charged upfront, half on  
 withdrawal if an insured  

@@ -161,10 +161,22 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
 
     function _transferHelper(address from, 
         address to, uint amount) internal {
-        uint supply = totalSupply(); // of QD...
-        uint balance = balanceOf(from); // before
+        uint supply = totalSupply(); // of QD
+        
+        uint balance_from = balanceOf(from); 
+        uint balance_to = balanceOf(to); 
+        
+        uint from_vote = quid[from].vote;
+        uint to_vote = quid[to].vote;
+
         amount = _minAmount(from, QUID, amount);
         _transfer(msg.sender, to, amount);
+        
+        _calculateMedian(balance_from, from_vote, 
+                         balanceOf(from), from_vote);
+        _calculateMedian(balance_to, to_vote, 
+                         balanceOf(to), to_vote);
+
         if (quid[from].offers[QUID].debit > 0) {
             // proportionally transfer debit
             uint ratio = FullMath.mulDiv(WAD, 
@@ -393,7 +405,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     function get_info(address who) external returns (uint, uint) {
         Pledge storage pledge = quid[who];
         return (pledge.offers[QUID].debit, balanceOf(who));
-    } 
+    }
     
 
     // make sure anyone calls this at least once 
@@ -417,8 +429,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
         require(new_vote != old_vote &&
                 new_vote < 89, "bad vote");
         
-        uint stake = pledge.offers[QUID].debit;
-        
+        uint stake = balanceOf(msg.sender);
         _calculateMedian(stake, new_vote, 
                          stake, old_vote);
     }
@@ -481,13 +492,16 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
             );
             amount = FullMath.mulDiv(WAD, cost, price);
             uint fee = FullMath.mulDiv(amount, FEE, WAD);
-            uint minted = amount - fee; amount = cost; 
+            uint minted = amount - fee; 
             // fee already distributed in constructor
             _mint(beneficiary, minted); 
 
             offering.credit += minted; offering.debit += cost;
             quid[QUID].offers[QUID].debit += cost;
             pledge.offers[QUID].debit += cost;  
+
+             TransferHelper.safeTransferFrom(token, 
+                    msg.sender, QUID, cost);
         } 
         else { uint price = _getPrice(token); // non-stables
             uint amount0; uint amount1; // for Uni LP deposit
@@ -518,6 +532,9 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
             require(quid[QUID].offers[WBTC].credit + 
                 quid[QUID].offers[WETH].credit < quid[QUID].offers[QUID].debit,
                 "cannot insure more than the value of insurance capital in AUM");
+
+            TransferHelper.safeTransferFrom(token, 
+                        msg.sender, QUID, amount);
             
             // TODO ratio between amounts needs to match current price
             /*
@@ -527,8 +544,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
             );
             */
         }
-        TransferHelper.safeTransferFrom(token, 
-                    msg.sender, QUID, amount);
+       
     }
     
     // You had not sold the tokens to the contract, but they were at
