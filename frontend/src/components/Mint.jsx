@@ -16,7 +16,7 @@ import "./Styles/Mint.scss"
 export const Mint = () => {
   const DELAY = 60 * 60 * 8 // some buffer for allowance
 
-  const { quid, sdai, addressQD, account } =
+  const { quid, sdai, addressQD, addressSDAI, account } =
     useAppContext();
 
   const [mintValue, setMintValue] = useState("")
@@ -80,7 +80,7 @@ export const Mint = () => {
     }
 
     if (quid) updateTotalSupply()
-    
+
 
     const timerId = setInterval(updateTotalSupply, 5000)
 
