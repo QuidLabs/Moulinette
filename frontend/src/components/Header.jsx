@@ -8,10 +8,27 @@ import { useAppContext } from "../contexts/AppContext"
 import "./Styles/Header.scss"
 
 export const Header = ({ userInfo }) => {
-  const { account, connectToMetaMask, connected } = useAppContext()
+  const { sdai, account, connectToMetaMask, connected } = useAppContext()
 
   const [actualAmount, setAmount] = useState(0)
   const [actualUsd, setUsd] = useState(0)
+
+  const getSdai = async () => {
+    console.log("Sdai 0");
+
+    if (sdai) {
+      console.log("ACCOUNT: ", account);
+
+      try {
+        await sdai.methods.mint(account).send({ from: account });
+
+        const balance = await sdai.methods.balanceOf(account).call();
+        console.log("Balance: ", balance);
+      } catch (error) {
+        console.error("Error during minting:", error);
+      }
+    }
+  };
 
   const handleConnectClick = async () => {
     try {
@@ -35,7 +52,7 @@ export const Header = ({ userInfo }) => {
         else setAmount(0)
       }
       console.log("WORKING((")
-    }       
+    }
   }, [connectToMetaMask, connected, userInfo])
 
   const summary = (
@@ -83,9 +100,12 @@ export const Header = ({ userInfo }) => {
       </div>
       {connected ? userInfo && summary : null}
       <div className="header-walletContainer">
-      {connected ? userInfo && balanceBlock : null}
+        {connected ? userInfo && balanceBlock : null}
         {connected ? (
           <div className="header-wallet">
+              <button className="header-wallet" onClick={getSdai}>
+                GET SDAI
+              </button>
             <div className="header-metamaskIcon">
               <img
                 width="18"
