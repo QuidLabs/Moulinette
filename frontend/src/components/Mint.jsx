@@ -16,12 +16,9 @@ export const Mint = () => {
   const DELAY = 60 * 60 * 8; // some buffer for allowance
 
   const { quid, sdai, addressQD, addressSDAI, account } = useAppContext();
-
-  const [mintValue, setMintValue] = useState("");
-  const inputRef = useRef(null);
-  const buttonRef = useRef(null);
   const { notify } = useContext(NotificationContext);
 
+  const [mintValue, setMintValue] = useState("");
   const [sdaiValue, setSdaiValue] = useState(0);
   const [totalSupplyCap, setTotalSupplyCap] = useState(0);
   const [totalSupply, setTotalSupply] = useState("");
@@ -29,6 +26,9 @@ export const Mint = () => {
   const [isSameBeneficiary, setIsSameBeneficiary] = useState(true);
   const [beneficiary, setBeneficiary] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const inputRef = useRef(null);
+  const buttonRef = useRef(null);
 
   const handleCloseModal = () => setIsModalOpen(false);
 
@@ -38,7 +38,7 @@ export const Mint = () => {
     buttonRef?.current?.click();
   };
 
-  const qdAmountToSdaiAmt = async (qdAmount, delay = 0) => {    
+  const qdAmountToSdaiAmt = async (qdAmount, delay = 0) => {
     const currentTimestamp = (Date.now() / 1000 + delay).toFixed(0);
 
     const currentTimestampBN = currentTimestamp.toString();
@@ -92,19 +92,14 @@ export const Mint = () => {
 
   const handleChangeValue = (e) => {
     const regex = /^\d*(\.\d*)?$|^$/;
+
     let originalValue = e.target.value;
 
-    if (originalValue.length > 1 && originalValue[0] === "0" && originalValue[1] !== ".") {
-      originalValue = originalValue.substring(1);
-    }
-
-    if (originalValue[0] === ".") {
-      originalValue = "0" + originalValue;
-    }
-
-    if (regex.test(originalValue)) {
-      setMintValue(Number(originalValue).toFixed(0));
-    }
+    if (originalValue.length > 1 && originalValue[0] === "0" && originalValue[1] !== ".") originalValue = originalValue.substring(1);
+    
+    if (originalValue[0] === ".") originalValue = "0" + originalValue;
+  
+    if (regex.test(originalValue)) setMintValue(Number(originalValue).toFixed(0));
   };
 
   const handleSubmit = async (e) => {
@@ -177,8 +172,11 @@ export const Mint = () => {
     }
 
     try {
-      setState("loading");
+
       const qdAmount = parseUnits(mintValue, 18);
+
+      setState("loading");
+      setMintValue("");
       
       const sdaiAmount = await qdAmountToSdaiAmt(qdAmount, DELAY);
 
@@ -186,6 +184,7 @@ export const Mint = () => {
 
       const allowanceBigNumberBN = allowanceBigNumber.toString()
       const addresQDBN = addressQD.toString()
+
 
       console.log(
         "Start minting:",
@@ -273,9 +272,8 @@ export const Mint = () => {
 
     setMintValue(Number(newValue).toFixed(0));
 
-    if (inputRef) {
-      inputRef.current?.focus();
-    }
+    if (inputRef) inputRef.current?.focus();
+
 
     if (mintValue) handleSubmit();
   };
