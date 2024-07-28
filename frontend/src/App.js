@@ -43,8 +43,8 @@ function App() {
         <div className="app-root">
           <Header userInfo={userInfo} />
           <nav>
-            <Link to="/" onClick={() => setCurrentPage('home')}>Home</Link>
-            <Link to="/Mint" onClick={() => setCurrentPage('mint')}>Mint</Link>
+            <Link to="/" onClick={() => setCurrentPage('home')}>Bridge</Link>
+            <Link to="/Mint" onClick={() => setCurrentPage('mint')}>Insure</Link>
           </nav>
           <main className={`app-main ${currentPage}`}>
             <div className="app-container">

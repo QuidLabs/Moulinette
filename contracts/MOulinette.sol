@@ -26,13 +26,13 @@ interface IWETH is IERC20 {
     external payable;
 }
 
+
 contract Moulinette is // en.wiktionary.org/wiki/moulinette
-    IERC721Receiver, ERC20 { // TODO tokenUri for 404 ;)
+    IERC721Receiver, ERC404 { // TODO tokenUri for 404 ;)
 
     address public SUSDE;
-    address public JOHN;
     address public QUID;
-    
+
     // TODO comment these out (sepolia testnet)
     address public WETH = 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14; 
     address public WBTC = 0x29f2D40B0605204364af54EC677bD022dA425d03; 
@@ -45,8 +45,9 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
 
     uint constant public MAX_PER_DAY = 7_777_777 * WAD; // mint cap (QD supply)
     
-    uint constant public DAYS = 40 days; // and nights
-    uint public START_PRICE = 50 * PENNY; // till 89
+    uint constant public DAYS = 43 days; // of Lent
+    uint public START_PRICE = 50 * PENNY; // till 92
+    // All I ever ask is keep it 8 more than 92
     Pod[DAYS] Offering; uint public START_DATE;
     uint public AVG_ROI; uint public SUM_ROI; 
     // Sum: (QD / Total QD) x (ROI / AVG_ROI)
@@ -105,34 +106,40 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     } // for QD, credit is the contribution to weighted
     // sum of (QD / total QD) times (ROI / avg ROI)...
     
+     function tokenURI(uint256 id) public pure override returns (string memory){
+        return string.concat("http://yo.quid.io/1729/", Strings.toString(id));
+        // the state of your networked stake...
+    }
+
     // TODO remove _susde constructor param (for Sepolia testing only)...
     constructor(address _susde /* address[] round */) ERC20("QU!D", "QD") { 
         
-        // POOL = IUniswapV3Pool(0xD1787BA366fea7F69212Dfc0a3637ACfEFdf7f25);
+        POOL = IUniswapV3Pool(0xD1787BA366fea7F69212Dfc0a3637ACfEFdf7f25); // Sepolia
         // TODO replace address (below is for mainnet deployment)
         // POOL = IUniswapV3Pool(0xCBCdF9626bC03E24f779434178A73a0B4bad62eD);
 
-        // address nfpm = 0x1238536071E1c677A632429e3655c799b22cDA52;
+        address nfpm = 0x1238536071E1c677A632429e3655c799b22cDA52; // Sepolia
         // TODO replace address (below is for mainnet deployment)
         // address nfpm = 0xC36442b4a4522E871399CD717aBDD847Ab11FE88;
 
-        SUSDE = _susde; // NFPM = INonfungiblePositionManager(nfpm);
-        // TransferHelper.safeApprove(WETH, nfpm, type(uint256).max);
-        // TransferHelper.safeApprove(WBTC, nfpm, type(uint256).max);
-        // LAST_TWAP_TICK = _getTWAPtick();
-         START_DATE = block.timestamp;
-
-        QUID = address(this);
-
-        /*
-        TransferHelper.safeTransfer(WETH, QUID, 
-            IERC20(WETH).balanceOf(msg.sender));
+        SUSDE = _susde; NFPM = INonfungiblePositionManager(nfpm);
+        START_DATE = block.timestamp; QUID = address(this);
         
-        TransferHelper.safeTransfer(WBTC, QUID,
-            IERC20(WBTC).balanceOf(msg.sender));
+        TransferHelper.safeApprove(WETH, nfpm, type(uint256).max);
+        TransferHelper.safeApprove(WBTC, nfpm, type(uint256).max);
 
-        console.log("balance OF %s", IERC20(WBTC).balanceOf(msg.sender));
+        /* 
+        _mint(msg.sender, 44 * STACK + 44 * BILL); 
+        uint cut = 4 * BAG / round.length;
+        for (uint i = 0; i < round.length; i++) {
+            _mint(round[i], cut);
+        } 
+        */
+    }
 
+    function onlyOnce() external {
+        require(TOKEN_ID == 0, "once");
+        LAST_TWAP_TICK = _getTWAPtick();
         (UPPER_TICK, LOWER_TICK) = _adjustTicks(LAST_TWAP_TICK);
         INonfungiblePositionManager.MintParams memory params =
             INonfungiblePositionManager.MintParams({
@@ -143,16 +150,9 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
                 amount0Min: 0, amount1Min: 0, recipient: QUID,
                 deadline: block.timestamp }); 
         (TOKEN_ID,,,) = NFPM.mint(params);
-        
-        _mint(JOHN, BAG); _mint(QUID, 10 * BAG);
-        uint cut = balanceOf(QUID) / round.length;
-        for (uint i = 0; i < round.length; i++) {
-            _transfer(QUID, round[i], cut);
-        } 
-        */
-
     }
 
+    // https://www.youtube.com/watch?v=ytwNwpkAmeU
     modifier isAfter {
         require(block.timestamp > 
             START_DATE + DAYS, "after");
@@ -242,7 +242,6 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     function _isDollar(address dollar) internal view returns 
         (bool) { return dollar == SUSDE; /* || dollar == SDAI; */ } // TODO uncomment for mainnet
 
-    /*
     function _decreaseAndCollect(uint128 liquidity) 
         internal returns (uint amount0, uint amount1) {
         NFPM.decreaseLiquidity(
@@ -257,7 +256,6 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
             )
         );
     }
-    */
 
     function _capitalisation(uint liability) internal returns (uint ratio) {
         uint assets = quid[QUID].offers[WBTC].credit + 
@@ -306,7 +304,6 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
         adjustedDecrease = _adjustToNearestIncrement(decrease);
     }
    
-    /*
     function _getTWAPtick() internal view returns (int24) {
         uint32[] memory ago = new uint32[](2);
         ago[0] = 177777; // ~2 days in seconds
@@ -317,7 +314,6 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
             return int24(0);
         } 
     }
-    */
 
     /** 
      * Returns the latest price obtained from the Chainlink ETH:USD aggregator 
@@ -453,7 +449,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
             // 20% in crypto
         }
         else {
-            if (_capitalisation(0) < 69) { 
+            if (_capitalisation(0) < 71) { 
                 _burn(beneficiary, balanceOf(beneficiary));
                 // gets transferred at the end of redeem
                 amount = pledge.offers[QUID].debit; 
@@ -473,7 +469,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     }
 
     function deposit(address beneficiary, uint amount,
-             address token) external payable {
+        address token) external payable {
         
         Pledge storage pledge = quid[beneficiary];
         if (pledge.vote == 0) { pledge.vote = 17; }
@@ -486,22 +482,23 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
             uint supply_cap = in_days * MAX_PER_DAY; 
             require(totalSupply() <= supply_cap, "cap"); 
             uint price = in_days * PENNY + START_PRICE;
+            // Yesterday's price is NOT today's price!
             
             uint cost = _minAmount(msg.sender, token,
                 FullMath.mulDiv(price, amount, WAD)
             );
             amount = FullMath.mulDiv(WAD, cost, price);
-            uint fee = FullMath.mulDiv(amount, FEE, WAD);
+            uint fee = FullMath.mulDiv(amount, 
+            PENNY + (3 * PENNY / 10), WAD);
             uint minted = amount - fee; 
-            // fee already distributed in constructor
             _mint(beneficiary, minted); 
 
             offering.credit += minted; offering.debit += cost;
             quid[QUID].offers[QUID].debit += cost;
             pledge.offers[QUID].debit += cost;  
-
-             TransferHelper.safeTransferFrom(token, 
-                    msg.sender, QUID, cost);
+            TransferHelper.safeTransferFrom(
+                token, msg.sender, QUID, cost
+            );
         } 
         else { uint price = _getPrice(token); // non-stables
             uint amount0; uint amount1; // for Uni LP deposit
@@ -537,12 +534,10 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
                         msg.sender, QUID, amount);
             
             // TODO ratio between amounts needs to match current price
-            /*
             NFPM.increaseLiquidity(
                 INonfungiblePositionManager.IncreaseLiquidityParams(
                     TOKEN_ID, amount0, amount1, 0, 0, block.timestamp)
             );
-            */
         }
        
     }
@@ -585,12 +580,11 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
 
         // Procedure for unwrapping from Uniswap to send the amount...
         // first determine liquidity needed to call decreaseLiquidity:
-        // uint160 sqrtPriceX96AtTickLower = TickMath.getSqrtPriceAtTick(LOWER_TICK);
-        // uint160 sqrtPriceX96AtTickUpper = TickMath.getSqrtPriceAtTick(UPPER_TICK);
+        uint160 sqrtPriceX96AtTickLower = TickMath.getSqrtPriceAtTick(LOWER_TICK);
+        uint160 sqrtPriceX96AtTickUpper = TickMath.getSqrtPriceAtTick(UPPER_TICK);
         
         amountToTransfer = amount - deductible;
         uint amount0; uint amount1; 
-        /*
         if (token == WETH) {
             uint128 liquidity = LiquidityAmounts.getLiquidityForAmount1(
                 sqrtPriceX96AtTickUpper, sqrtPriceX96AtTickLower,
@@ -615,7 +609,6 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
                 TOKEN_ID, amount0, amount1, 0, 0, block.timestamp
             )
         );
-        */
         if (amountToTransfer > 0) {
             amountToTransfer = _min(amountToTransfer, 
                 IERC20(token).balanceOf(QUID));
@@ -630,7 +623,6 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     // Since repackNFT() is relatively costly in terms of gas, 
     // we want to call it rarely...so as a rule of thumb, the  
     // range is roughly 14% total, 7% below TWAP and 7% above 
-    /*
     function repackNFT() external { _repackNFT(); }
     function _repackNFT() internal {
         uint128 liquidity; int24 twap = _getTWAPtick();  
@@ -667,7 +659,6 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
             );
         }
     }
-    */
 
     /** Whenever an {IERC721} `tokenId` token is transferred to this contract:
      * @dev Safe transfer `tokenId` token from `from` to `address(this)`, 
@@ -684,7 +675,6 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
         address from, // previous owner
         uint tokenId, bytes calldata data
     ) external override returns (bytes4) {
-        /*
         Pledge storage pledge = quid[from];
         (,, address token0, address token1,
          ,,, uint128 liquidity,,,,) = NFPM.positions(tokenId);
@@ -717,7 +707,6 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
                 amount0, amount1, 0, 0, block.timestamp
             )
         );
-        */
         return this.onERC721Received.selector;
     }
 } 

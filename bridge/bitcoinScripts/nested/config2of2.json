@@ -1,0 +1,13 @@
+{
+    "privateKeys": [
+        {
+            "hex": "",
+            "weight": 1
+        },
+        {
+            "hex": "",
+            "weight": 1
+        }
+    ],
+    "required": 2
+}

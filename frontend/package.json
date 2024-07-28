@@ -33,6 +33,7 @@
     "sass": "^1.7.6"
   },
   "scripts": {
+    "deploy": "npx hardhat run --network sepolia ../scripts/deploy.js"
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
