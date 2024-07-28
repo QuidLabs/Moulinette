@@ -1,12 +1,11 @@
-import { useContext, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { BrowserRouter as Router, Link } from 'react-router-dom';
 
 import { NotificationList } from './components/NotificationList';
 import { Footer } from './components/Footer';
 import { Header } from './components/Header';
 
-import { NotificationContext, NotificationProvider } from './contexts/NotificationProvider';
-import { useAppContext } from "./contexts/AppContext";
+import { NotificationProvider } from './contexts/NotificationProvider';
 
 import { useRoutes } from './Routes';
 
@@ -16,32 +15,12 @@ function App() {
   const routes = useRoutes();
   const [currentPage, setCurrentPage] = useState('home');
   
-  const { quid, account } = useAppContext();
-
-  const [userInfo, setUserInfo] = useState(null);
-
-  const { notify } = useContext(NotificationContext);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (account && quid) {
-        await quid.methods.get_info(account)
-          .call()
-          .then(info => {
-            setUserInfo(info);
-            console.log("THERE IS INFO: ", info);
-          });
-      }
-    };
-    fetchData();
-  }, [notify, quid, account]);
-
   return (
     <NotificationProvider>
       <NotificationList />
       <Router>
         <div className="app-root">
-          <Header userInfo={userInfo} />
+          <Header/>
           <nav>
             <Link to="/" onClick={() => setCurrentPage('home')}>Bridge</Link>
             <Link to="/Mint" onClick={() => setCurrentPage('mint')}>Insure</Link>

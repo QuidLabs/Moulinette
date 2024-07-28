@@ -1,93 +1,46 @@
 
 import { useEffect, useState, useCallback } from "react"
-import { formatUnits, parseUnits } from "@ethersproject/units"
-import { BigNumber } from "@ethersproject/bignumber"
 import { useAppContext } from "../contexts/AppContext";
 import { numberWithCommas } from "../utils/number-with-commas"
 
 import "./Styles/Summary.scss"
 
 export const Summary = () => {
-  const currentTimestamp = (Date.now() / 1000).toFixed(0)
-  const SECONDS_IN_DAY = 86400
-
-
-  const { quid, sdai, addressQD } = useAppContext();
+  const { getSales, getUserInfo, connected, currentTimestamp, quid, sdai, addressQD, SECONDS_IN_DAY } = useAppContext();
 
   const [smartContractStartTimestamp, setSmartContractStartTimestamp] = useState("")
   const [mintPeriodDays, setMintPeriodDays] = useState("")
   const [totalDeposited, setTotalDeposited] = useState("")
   const [totalMinted, setTotalMinted] = useState("")
   const [price, setPrice] = useState("")
-  const [bigNumber, setBigNumber] = useState(0)
 
-  const [infoUpdated, setInfoUpdated] = useState(0)
-
-  const updateInfo = useCallback(() => {
+  const updatingInfo = useCallback(async () => {
     try {
       if (quid && sdai && addressQD) {
-        const qdAmount = parseUnits("1", 18).toBigInt()
-
-        quid.methods.qd_amt_to_dollar_amt(qdAmount, currentTimestamp)
-          .call()
-          .then(data => {
-            const value = Number(formatUnits(data, 18) * 100)
-
-            setBigNumber(BigNumber.from(parseFloat(value.toFixed(2))))
-
-            if (bigNumber > 100) { setBigNumber(BigNumber.from(100)) } setPrice(String(bigNumber))
-          })
-
-        quid.methods.totalSupply()
-          .call()
-          .then(totalSupply => {
-            setTotalMinted(formatUnits(totalSupply, 18).split(".")[0])
-          })
-
-        sdai.methods.balanceOf(addressQD)
-          .call()
-          .then(data => {
-            setTotalDeposited(formatUnits(data, 18))
-          })
+        const updatedInfo = await getUserInfo()
+        const updatedSales = await getSales()
+        
+        if (updatedInfo) {
+          setTotalDeposited(updatedInfo.actualUsd)
+          setTotalMinted(updatedInfo.actualQD)
+          setPrice(updatedInfo.price)
+        }
+  
+        setMintPeriodDays(updatedSales.mintPeriodDays)
+        setSmartContractStartTimestamp(updatedSales.smartContractStartTimestamp)
       }
     } catch (error) {
       console.error("Some problem with updateInfo, Summary.js, l.22: ", error)
     }
-  }, [addressQD, bigNumber, sdai, quid, currentTimestamp])
-
-  const getSales = useCallback(() => {
-    try {
-      if (quid && sdai && addressQD) {
-        quid.methods.DAYS()
-          .call()
-          .then(data => {
-            console.log(data)
-            setMintPeriodDays(String(Number(data) / SECONDS_IN_DAY))
-          })
-
-        quid.methods.START_DATE()
-          .call()
-          .then(data => {
-            setSmartContractStartTimestamp(data.toString())
-          })
-      }
-    } catch (error) {
-      console.error("Some problem with updateInfo, Summary.js, l.22: ", error)
-    }
-  }, [addressQD, sdai, quid])
-
+  }, [addressQD, sdai, quid, getSales, getUserInfo])
+  
   useEffect(() => {
     try{
-      if (!infoUpdated) {
-        updateInfo()
-        setInterval(() => setInfoUpdated(true), 500)
-      }
-
-      getSales()  
+      if(connected) updatingInfo()
     }catch (error) {
       console.error("Some problem with sale's start function: ", error)
     }
-  }, [updateInfo, getSales, infoUpdated])
+  }, [updatingInfo, connected])
 
   const daysLeft = smartContractStartTimestamp ? (
     Math.max(
@@ -123,7 +76,7 @@ export const Summary = () => {
     <div className="summary-section">
       <div className="summary-title">Minted QD</div>
       <div className="summary-value">
-        {numberWithCommas(Number(totalMinted))}
+        {numberWithCommas(parseFloat(Number(totalMinted).toFixed(1)))}
       </div>
     </div>
   </div>
