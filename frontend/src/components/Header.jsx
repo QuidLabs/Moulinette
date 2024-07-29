@@ -6,7 +6,10 @@ import { useAppContext } from "../contexts/AppContext"
 import "./Styles/Header.scss"
 
 export const Header = () => {
-  const { account, connectToMetaMask, getTotalInfo, getSdai, connected } = useAppContext()
+  const { 
+    connectToMetaMask, getTotalInfo, getSdai, 
+    account, connected 
+  } = useAppContext()
 
   const [actualAmount, setAmount] = useState(0)
   const [actualUsd, setUsd] = useState(0)
@@ -25,7 +28,7 @@ export const Header = () => {
     try {
       const updatedInfo = await getTotalInfo() 
   
-      if (updatedInfo.total_dep && updatedInfo.total_mint !== undefined) {
+      if (updatedInfo && updatedInfo.total_dep && updatedInfo.total_mint) {
         const costInUsd = updatedInfo.total_dep
         const qdAmount = updatedInfo.total_mint
   
@@ -42,7 +45,6 @@ export const Header = () => {
   useEffect(() => {
     if (connected) {
       connectToMetaMask()
-      
       updatedTotalInfo()
     }
   }, [connected, connectToMetaMask, updatedTotalInfo])
