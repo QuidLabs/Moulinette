@@ -1,6 +1,6 @@
 
 ## 👁‍🗨U!D protocol...
-   
+
 After [maturing](https://www.investopedia.com/terms/z/zero-couponbond.asp), 1 QD can be   
 redeemed for $1. There are  
 43 days ([discount window]((https://bit.ly/3q4tShS)))  
@@ -55,3 +55,5 @@ withdrawal if an insured
 event is triggered). An  
 insured event is a price  
 drop of 2 x deductible %.  
+
+`❯ npx hardhat run --network sepolia scripts/deploy.js`

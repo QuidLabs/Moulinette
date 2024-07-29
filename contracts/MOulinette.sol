@@ -26,7 +26,6 @@ interface IWETH is IERC20 {
     external payable;
 }
 
-
 contract Moulinette is // en.wiktionary.org/wiki/moulinette
     IERC721Receiver, ERC404 { // TODO tokenUri for 404 ;)
 
@@ -112,7 +111,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     }
 
     // TODO remove _susde constructor param (for Sepolia testing only)...
-    constructor(address _susde /* address[] round */) ERC20("QU!D", "QD") { 
+    constructor(address _susde /* address[] seed */) ERC20("QU!D", "QD") { 
         
         POOL = IUniswapV3Pool(0xD1787BA366fea7F69212Dfc0a3637ACfEFdf7f25); // Sepolia
         // TODO replace address (below is for mainnet deployment)
@@ -128,28 +127,13 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
         TransferHelper.safeApprove(WETH, nfpm, type(uint256).max);
         TransferHelper.safeApprove(WBTC, nfpm, type(uint256).max);
 
-        /* 
+        /*
         _mint(msg.sender, 44 * STACK + 44 * BILL); 
-        uint cut = 4 * BAG / round.length;
-        for (uint i = 0; i < round.length; i++) {
-            _mint(round[i], cut);
+        uint piece = 4 * BAG / seed.length;
+        for (uint i = 0; i < seed.length; i++) {
+            _mint(seed[i], piece);
         } 
         */
-    }
-
-    function onlyOnce() external {
-        require(TOKEN_ID == 0, "once");
-        LAST_TWAP_TICK = _getTWAPtick();
-        (UPPER_TICK, LOWER_TICK) = _adjustTicks(LAST_TWAP_TICK);
-        INonfungiblePositionManager.MintParams memory params =
-            INonfungiblePositionManager.MintParams({
-                token0: WBTC, token1: WETH, fee: POOL_FEE,
-                tickLower: LOWER_TICK, tickUpper: UPPER_TICK,
-                amount0Desired: IERC20(WBTC).balanceOf(QUID),
-                amount1Desired: IERC20(WETH).balanceOf(QUID),
-                amount0Min: 0, amount1Min: 0, recipient: QUID,
-                deadline: block.timestamp }); 
-        (TOKEN_ID,,,) = NFPM.mint(params);
     }
 
     // https://www.youtube.com/watch?v=ytwNwpkAmeU
@@ -386,7 +370,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     /*                     EXTERNAL FUNCTIONS                     */
     /*-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»-»*/ 
 
-     // Two helper functions used by frontend (duplicated code)
+    // 2 helper functions used by frontend (duplicated code)
     function qd_amt_to_dollar_amt(uint qd_amt, 
         uint block_timestamp) public view returns (uint amount) {
         uint in_days = ((block_timestamp - START_DATE) / 1 days) + 1; 
@@ -402,7 +386,6 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
         Pledge storage pledge = quid[who];
         return (pledge.offers[QUID].debit, balanceOf(who));
     }
-    
 
     // make sure anyone calls this at least once 
     function calculate_average_return() external isAfter {
@@ -469,7 +452,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     }
 
     function deposit(address beneficiary, uint amount,
-        address token) external payable {
+        address token) external payable { _repackNFT();
         
         Pledge storage pledge = quid[beneficiary];
         if (pledge.vote == 0) { pledge.vote = 17; }
@@ -545,8 +528,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     // You had not sold the tokens to the contract, but they were at
     // at stake in an offering (an option contract for coverage)...
     function withdraw(address token, uint amount) external isAfter { 
-        // _repackNFT(); 
-        Pledge storage pledge = quid[msg.sender];
+        _repackNFT(); Pledge storage pledge = quid[msg.sender];
         amount = _min(pledge.offers[token].debit, amount);
         require(amount > 0, "withdraw"); uint amountToTransfer;
         // withdraw WETH / WBTC that's being insured by dollars
@@ -602,8 +584,8 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
             (amount0,
              amount1) = _decreaseAndCollect(liquidity); amount0 -= amountToTransfer;
         }
-        // TODO ratio between amounts needs to match current price
         
+        // TODO ratio between amounts needs to match current price
         NFPM.increaseLiquidity(
             INonfungiblePositionManager.IncreaseLiquidityParams(
                 TOKEN_ID, amount0, amount1, 0, 0, block.timestamp
@@ -618,20 +600,22 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
         }
     }
     
+    // deployer must send the contract some WETH and WBTC first.
     // We want to make sure that all of the WETH and / or WBTC
-    // provided to this contract is always in range (collecting)
+    // deposited to this contract is always in range (collecting)
     // Since repackNFT() is relatively costly in terms of gas, 
     // we want to call it rarely...so as a rule of thumb, the  
     // range is roughly 14% total, 7% below TWAP and 7% above 
     function repackNFT() external { _repackNFT(); }
     function _repackNFT() internal {
         uint128 liquidity; int24 twap = _getTWAPtick();  
-        if (twap > UPPER_TICK || // TWAP over last 2 days
-            twap < LOWER_TICK) { LAST_TWAP_TICK = twap; 
+        if (LAST_TWAP_TICK != 0 && twap > UPPER_TICK || 
+            twap < LOWER_TICK) {
             (,,,,,,, liquidity,,,,) = NFPM.positions(TOKEN_ID);
             _decreaseAndCollect(liquidity); NFPM.burn(TOKEN_ID);
-        }
-        if (liquidity > 0) {
+        } 
+        LAST_TWAP_TICK = twap;
+        if (liquidity > 0 || TOKEN_ID == 0) {
             (UPPER_TICK, LOWER_TICK) = _adjustTicks(LAST_TWAP_TICK);
             INonfungiblePositionManager.MintParams memory params =
                 INonfungiblePositionManager.MintParams({
