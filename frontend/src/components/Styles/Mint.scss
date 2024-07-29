@@ -213,9 +213,7 @@
 
 .mint-maxButton {
   display: block;
-  width: 64px;
-  height: 64px;
-  padding: 0;
+  margin-top: 45px;
   background: none;
   border: none;
   color: #54b420;
@@ -232,17 +230,12 @@
 }
 
 .mint-maxButtonBackground {
-  display: block;
   color: #54b420;
-  position: absolute;
+  position: relative;
   pointer-events: none;
-  width: 69px;
-  height: 99px;
   z-index: -1;
-  left: -1px;
-  top: -26px;
+  top: -20px;
   opacity: 0;
-  transition: opacity 0.3s;
 }
 
 .mint-sub {

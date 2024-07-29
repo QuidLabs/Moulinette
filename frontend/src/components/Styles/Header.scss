@@ -55,7 +55,6 @@
 
   .header-wallet {
     display: flex;
-    margin-left: 10px;
     background-color: transparent;
     background-size: contain;
     background-position: center;
@@ -64,7 +63,6 @@
     color: #fff;
     line-height: 20px;
     font-size: 14px;
-    //font-family: variables.$primary-font;
     font-weight: 600;
     position: relative;
 
@@ -80,7 +78,6 @@
 
   .header-metamaskIcon {
     display: block;
-    margin-right: 10px;
     font-size: 0;
     line-height: 0;
     user-select: none;
@@ -90,12 +87,8 @@
   .header-walletBackground {
     display: block;
     color: #54b420;
-    opacity: 0.4;
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    opacity: 0;
+    position: relative;
     pointer-events: none;
     width: 100%;
     height: 100%;

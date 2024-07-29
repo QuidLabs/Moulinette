@@ -14,6 +14,7 @@ const contextState = {
   getSales: () => { },
   getTotalInfo: () => { },
   getUserInfo: () => { },
+  getTotalSupply: () => { },
   connected: false,
   connecting: false,
   provider: {},
@@ -43,6 +44,29 @@ export const AppContextProvider = ({ children }) => {
   const [currentPrice, setPrice] = useState(null)
 
   const SECONDS_IN_DAY = 86400
+
+
+  const getTotalSupply = useCallback(async () => {
+    try {
+      setAccountTimestamp((Date.now() / 1000).toFixed(0))
+
+      if (quid && currentTimestamp) {
+        const currentTimestampBN = currentTimestamp.toString()
+  
+        const [totalSupplyCap] = await Promise.all([
+          quid.methods.get_total_supply_cap(currentTimestampBN).call(),
+          quid.methods.totalSupply().call()
+        ])
+        
+        const totalCapInt = parseInt(formatUnits(totalSupplyCap, 18))
+        
+        if(totalCapInt) return totalCapInt
+      }
+    } catch (error) {
+      console.error("Some problem with getSupply: ", error)
+      return null
+    }
+  }, [currentTimestamp, quid])
 
   const getSales = useCallback(async () => {
     try {
@@ -199,6 +223,7 @@ export const AppContextProvider = ({ children }) => {
         getTotalInfo,
         getUserInfo,
         getSales,
+        getTotalSupply,
         connected,
         connecting,
         currentTimestamp,

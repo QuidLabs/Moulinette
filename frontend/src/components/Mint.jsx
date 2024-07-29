@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react"
+import { useCallback, useEffect, useState, useRef } from "react"
 import { formatUnits, parseUnits } from "@ethersproject/units"
 
 import { Modal } from "./Modal"
@@ -14,7 +14,7 @@ import "./Styles/Mint.scss"
 export const Mint = () => {
   const DELAY = 60 * 60 * 8 
 
-  const {  getTotalInfo,
+  const { getTotalInfo, getUserInfo, getTotalSupply,
     addressQD, addressSDAI, account, currentPrice, quid, sdai } = useAppContext()
 
   const [mintValue, setMintValue] = useState("")
@@ -54,35 +54,29 @@ export const Mint = () => {
   useDebounce(
     mintValue,
     async () => {
-      if (parseInt(mintValue) > 0) {
-        setSdaiValue(currentPrice * 0.01)
-      } else {
-        setSdaiValue(0)
-      }
+      if (parseInt(mintValue) > 0) setSdaiValue(currentPrice * 0.01)
+      else setSdaiValue(0)
     },
     500
   )
 
-  const updateTotalSupply = async (currentTimestamp, quid) => {
-    if (quid) {
-      const currentTimestampBN = currentTimestamp.toString()
+  const updateTotalSupply = useCallback(async () => {
+    try {
+      if (quid) {
+        const totalSupply = await getTotalSupply()
 
-      const [totalSupplyCap] = await Promise.all([
-        quid.methods.get_total_supply_cap(currentTimestampBN).call(),
-        quid.methods.totalSupply().call()
-      ])
-
-      const totalSupplyCapInt = parseInt(formatUnits(totalSupplyCap, 18))
-
-      setTotalSupplyCap(totalSupplyCapInt)
+        setTotalSupplyCap(totalSupply)
+      }
+    } catch (error) {
+      console.error(error)
+      return null
     }
-  }
+  }, [getTotalSupply, quid])
+  
 
   useEffect(() => {
-    const currentTimestamp = (Date.now() / 1000).toFixed(0)
-
-    if (quid) updateTotalSupply(currentTimestamp, quid)
-  }, [quid])
+    if (quid) updateTotalSupply()
+  }, [updateTotalSupply, quid])
 
   const handleChangeValue = (e) => {
     const regex = /^\d*(\.\d*)?$|^$/
@@ -198,6 +192,8 @@ export const Mint = () => {
       await quid.methods.deposit(beneficiaryAccount.toString(), qdAmount.toString(), addressSDAI.toString()).send({ from: account })
 
       await getTotalInfo()
+      await getUserInfo()
+
       console.log("MINTED: ", account)
 
       setNotifications([{ severity: "success", message: "Your minting is pending!" }]) 
@@ -239,7 +235,7 @@ export const Mint = () => {
       <div className="mint-availability">
         <span className="mint-availabilityMax">
           <span style={{ color: "#02d802" }}>
-            {numberWithCommas(totalSupplyCap.toFixed())}
+            {numberWithCommas(totalSupplyCap)}
             &nbsp;
           </span>
           QD mintable
