@@ -6,7 +6,8 @@ import { numberWithCommas } from "../utils/number-with-commas"
 import "./Styles/Summary.scss"
 
 export const Summary = () => {
-  const { getSales, getUserInfo, connected, currentTimestamp, quid, sdai, addressQD, SECONDS_IN_DAY } = useAppContext();
+  const { getSales, getUserInfo, connected, currentTimestamp, quid, sdai, 
+    account, addressQD, SECONDS_IN_DAY } = useAppContext();
 
   const [smartContractStartTimestamp, setSmartContractStartTimestamp] = useState("")
   const [mintPeriodDays, setMintPeriodDays] = useState("")
@@ -37,10 +38,10 @@ export const Summary = () => {
   useEffect(() => {
     try{
       if(connected) updatingInfo()
-    }catch (error) {
+    } catch (error) {
       console.error("Some problem with sale's start function: ", error)
     }
-  }, [updatingInfo, connected])
+  }, [updatingInfo, connected, account, totalMinted])
 
   const daysLeft = smartContractStartTimestamp ? (
     Math.max(
