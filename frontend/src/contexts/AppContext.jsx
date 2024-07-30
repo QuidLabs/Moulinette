@@ -51,7 +51,7 @@ export const AppContextProvider = ({ children }) => {
     try {
       setAccountTimestamp((Date.now() / 1000).toFixed(0))
 
-      if (account && quid && currentTimestamp) {
+      if (account && connected && quid && currentTimestamp) {
         const currentTimestampBN = currentTimestamp.toString()
 
         const [totalSupplyCap] = await Promise.all([
@@ -67,7 +67,7 @@ export const AppContextProvider = ({ children }) => {
       console.error("Some problem with getSupply: ", error)
       return null
     }
-  }, [account, currentTimestamp, quid])
+  }, [account, connected, currentTimestamp, quid])
 
   const getSales = useCallback(async () => {
     try {
