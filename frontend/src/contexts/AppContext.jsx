@@ -59,7 +59,7 @@ export const AppContextProvider = ({ children }) => {
           quid.methods.totalSupply().call()
         ])
 
-        const totalCapInt = parseInt(formatUnits(totalSupplyCap, 18))
+        const totalCapInt = totalSupplyCap ? parseInt(formatUnits(totalSupplyCap, 18)) : null
 
         if (totalCapInt) return totalCapInt
       }
