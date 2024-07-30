@@ -16,9 +16,9 @@ export const Header = () => {
 
   const [grain, setGrain] = useState(0)
 
-  const handleConnectClick = useCallback(() => {
+  const handleConnectClick = useCallback(async () => {
     try {
-      connectToMetaMask()
+      await connectToMetaMask()
     } catch (error) {
       console.error("Failed to connect to MetaMask", error)
     }
