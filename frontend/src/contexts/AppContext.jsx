@@ -206,9 +206,9 @@ export const AppContextProvider = ({ children }) => {
 
   const connectToMetaMask = useCallback(async () => {
     try {
-      if (!account && connected) {
+      if (!account) {
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
-        setAccount(accounts?.[0])
+        setAccount(accounts[0])
 
         if (provider) {
           const web3Instance = new Web3(provider)
@@ -220,14 +220,14 @@ export const AppContextProvider = ({ children }) => {
         }
       }
 
-      if (quid && sdai && account && connected) {
+      if (quid && sdai && account) {
         getSdaiBalance()
         getQdBalance()
       }
     } catch (error) {
       console.warn(`Failed to connect:`, error)
     }
-  }, [getSdaiBalance, getQdBalance, account, connected, provider, quid, sdai])
+  }, [getSdaiBalance, getQdBalance, account, provider, quid, sdai])
 
 
   return (
