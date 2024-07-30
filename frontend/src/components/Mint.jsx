@@ -238,7 +238,7 @@ export const Mint = () => {
           <div className="mint-header">
             <span className="mint-title">
               <span className="mint-totalSupply">
-                <span style={{ fontWeight: 400 }}>
+                <span style={{ fontWeight: 400 , color: '#4ad300'}}>
                   {totalSupplyCap ? numberWithCommas(totalSupplyCap) : 0}
                   &nbsp;
                 </span>
