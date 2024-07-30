@@ -1,3 +1,13 @@
+.mint {
+  display: flex;
+  flex-direction: column;
+  align-self: center;
+  justify-self: center;
+  margin: 0 auto;
+  position: relative;
+  align-items: stretch;
+}
+
 .mint-root {
   display: flex;
   flex-direction: column;
@@ -354,6 +364,72 @@
   display: flex;
   flex-direction: row;
   width: 100%;
+}
+
+.mint-console {
+  background-color: #000;
+  color: #54b420;
+  border: 1px solid #352200;
+  border-radius: 5px;
+  padding: 10px;
+  font-family: monospace;
+  font-size: 14px;
+  overflow-y: auto;
+  max-height: 250px; 
+  white-space: pre-wrap; 
+  opacity: 0.5;
+  height: 100px;
+  margin-top: 20px;
+}
+
+.mint-console-line {
+  margin-bottom: 2px;
+}
+
+.mint-console-line.success {
+  color: #02d802;
+}
+
+.mint-console-line.error {
+  color: #d80202;
+}
+
+.mint-console-processing {
+  color: #54b420;
+  font-weight: bold;
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.mint-console-dots {
+  margin-left: 5px;
+  animation: mint-console-dots 1s steps(3, end) infinite;
+}
+
+.mint-console-line.info .processing-dots {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  border-radius: 50%;
+  background: #000;
+  animation: blink 1s infinite;
+}
+
+.mint-console-content {
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 @keyframes mint-glow {
