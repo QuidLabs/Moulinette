@@ -93,7 +93,7 @@ export const AppContextProvider = ({ children }) => {
     try {
       setAccountTimestamp((Date.now() / 1000).toFixed(0))
 
-      if (account && quid && sdai && addressQD) {
+      if (connected && account && quid && sdai && addressQD) {
         const qdAmount = parseUnits("1", 18).toBigInt()
 
         const data = await quid.methods.qd_amt_to_dollar_amt(qdAmount, currentTimestamp).call()
@@ -119,13 +119,13 @@ export const AppContextProvider = ({ children }) => {
     } catch (error) {
       console.error("Error in updateInfo: ", error)
     }
-  }, [account, quid, sdai, currentTimestamp, totalMint, totalDeposite])
+  }, [account, connected, quid, sdai, currentTimestamp, totalMint, totalDeposite])
 
   const getUserInfo = useCallback(async () => {
     try {
       setAccountTimestamp((Date.now() / 1000).toFixed(0))
 
-      if (connected, account && quid) {
+      if (connected && account && quid) {
 
         const qdAmount = parseUnits("1", 18).toBigInt()
 
@@ -206,7 +206,7 @@ export const AppContextProvider = ({ children }) => {
 
   const connectToMetaMask = useCallback(async () => {
     try {
-      if (!account) {
+      if (!account && connected) {
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
         setAccount(accounts?.[0])
 
@@ -220,14 +220,14 @@ export const AppContextProvider = ({ children }) => {
         }
       }
 
-      if (quid && sdai && account) {
+      if (quid && sdai && account && connected) {
         getSdaiBalance()
         getQdBalance()
       }
     } catch (error) {
       console.warn(`Failed to connect:`, error)
     }
-  }, [getSdaiBalance, getQdBalance, account, provider, quid, sdai])
+  }, [getSdaiBalance, getQdBalance, account, connected, provider, quid, sdai])
 
 
   return (
