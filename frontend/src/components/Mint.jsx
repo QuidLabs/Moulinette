@@ -314,6 +314,7 @@ export const Mint = () => {
         </form>
         <div className="mint-console" ref={consoleRef}>
           <div className="mint-console-content">
+            {notifications && connected ? "Terminal started. Mint is available!" : "Connect your metamask"}
             {notifications ? notifications.map((notification, index) => (
               <div
                 key={index}
