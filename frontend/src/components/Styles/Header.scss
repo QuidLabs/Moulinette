@@ -67,13 +67,12 @@
     position: relative;
 
     &:hover>.header-walletBackground {
-      opacity: 0.7;
+      opacity: 0;
     }
   }
 
   button.header-wallet {
     cursor: pointer;
-    user-select: none;
   }
 
   .header-metamaskIcon {

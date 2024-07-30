@@ -15,6 +15,7 @@ const contextState = {
   getTotalInfo: () => { },
   getUserInfo: () => { },
   getTotalSupply: () => { },
+  setAllInfo: () => { },
   connected: false,
   connecting: false,
   provider: {},
@@ -39,38 +40,38 @@ export const AppContextProvider = ({ children }) => {
 
   const [totalDeposite, setTotalDeposited] = useState("")
   const [totalMint, setTotalMinted] = useState("")
-  const [currentTimestamp, setAccountTimestamp] = useState(0)
-
   const [currentPrice, setPrice] = useState(null)
 
-  const SECONDS_IN_DAY = 86400
+  const [currentTimestamp, setAccountTimestamp] = useState(0)
 
+
+  const SECONDS_IN_DAY = 86400
 
   const getTotalSupply = useCallback(async () => {
     try {
       setAccountTimestamp((Date.now() / 1000).toFixed(0))
 
-      if (quid && currentTimestamp) {
+      if (account && quid && currentTimestamp) {
         const currentTimestampBN = currentTimestamp.toString()
-  
+
         const [totalSupplyCap] = await Promise.all([
           quid.methods.get_total_supply_cap(currentTimestampBN).call(),
           quid.methods.totalSupply().call()
         ])
-        
+
         const totalCapInt = parseInt(formatUnits(totalSupplyCap, 18))
-        
-        if(totalCapInt) return totalCapInt
+
+        if (totalCapInt) return totalCapInt
       }
     } catch (error) {
       console.error("Some problem with getSupply: ", error)
       return null
     }
-  }, [currentTimestamp, quid])
+  }, [account, currentTimestamp, quid])
 
   const getSales = useCallback(async () => {
     try {
-      if (quid && sdai && addressQD) {
+      if (account && quid && sdai && addressQD) {
         const days = await quid.methods.DAYS().call()
         const startDate = await quid.methods.START_DATE().call()
 
@@ -86,13 +87,13 @@ export const AppContextProvider = ({ children }) => {
       console.error("Some problem with updateInfo, Summary.js, l.22: ", error)
       return null
     }
-  }, [sdai, quid])
+  }, [account, sdai, quid])
 
   const getTotalInfo = useCallback(async () => {
     try {
       setAccountTimestamp((Date.now() / 1000).toFixed(0))
 
-      if (quid && sdai && addressQD) {
+      if (account && quid && sdai && addressQD) {
         const qdAmount = parseUnits("1", 18).toBigInt()
 
         const data = await quid.methods.qd_amt_to_dollar_amt(qdAmount, currentTimestamp).call()
@@ -118,7 +119,7 @@ export const AppContextProvider = ({ children }) => {
     } catch (error) {
       console.error("Error in updateInfo: ", error)
     }
-  }, [quid, sdai, currentTimestamp, totalMint, totalDeposite])
+  }, [account, quid, sdai, currentTimestamp, totalMint, totalDeposite])
 
   const getUserInfo = useCallback(async () => {
     try {
@@ -140,7 +141,7 @@ export const AppContextProvider = ({ children }) => {
 
         setPrice(bigNumber.toString())
         setUsdBalance(actualUsd)
-        setLocalMinted(actualQD) 
+        setLocalMinted(actualQD)
 
         return { actualUsd: actualUsd, actualQD: actualQD, price: bigNumber.toString(), info: info }
       }
@@ -154,7 +155,7 @@ export const AppContextProvider = ({ children }) => {
     try {
       console.log("Sdai 0")
 
-      if (sdai) {
+      if (account && sdai) {
         await sdai.methods.mint(account).send({ from: account })
 
         console.log("ACCOUNT: ", account)
@@ -162,7 +163,7 @@ export const AppContextProvider = ({ children }) => {
     } catch (error) {
       console.warn(`Failed to connect:`, error)
     }
-  }, [sdai, account])
+  }, [account, sdai])
 
   const getSdaiBalance = useCallback(async () => {
     try {
@@ -188,22 +189,37 @@ export const AppContextProvider = ({ children }) => {
     }
   }, [account, quid])
 
+  const setAllInfo = useCallback(async (gUSD, gSDAI, lUsd, lSdai, price, reset = false) => {
+    try {
+      setUsdBalance(gUSD)
+      setLocalMinted(gSDAI)
+
+      setTotalDeposited(lUsd)
+      setTotalMinted(lSdai)
+      setPrice(price)
+
+      if (reset) setAccount("")
+    } catch (error) {
+      console.warn(`Failed to set all info:`, error)
+    }
+  }, [])
+
   const connectToMetaMask = useCallback(async () => {
     try {
       if (!account) {
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
         setAccount(accounts?.[0])
-  
+
         if (provider) {
           const web3Instance = new Web3(provider)
           const quidContract = new web3Instance.eth.Contract(QUID, addressQD)
           const sdaiContract = new web3Instance.eth.Contract(SDAI, addressSDAI)
-  
+
           setQuid(quidContract)
           setSdai(sdaiContract)
         }
       }
-  
+
       if (quid && sdai && account) {
         getSdaiBalance()
         getQdBalance()
@@ -212,7 +228,7 @@ export const AppContextProvider = ({ children }) => {
       console.warn(`Failed to connect:`, error)
     }
   }, [getSdaiBalance, getQdBalance, account, provider, quid, sdai])
-  
+
 
   return (
     <AppContext.Provider
@@ -224,6 +240,7 @@ export const AppContextProvider = ({ children }) => {
         getUserInfo,
         getSales,
         getTotalSupply,
+        setAllInfo,
         connected,
         connecting,
         currentTimestamp,

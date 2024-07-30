@@ -42,11 +42,9 @@ export const Mint = () => {
     const currentTimestamp = (Date.now() / 1000 + delay).toFixed(0)
 
     const currentTimestampBN = currentTimestamp.toString()
-    const qdAmountBN = qdAmount.toString()
+    const qdAmountBN = qdAmount ? qdAmount.toString() : 0
 
-    const qdAmountCall = quid
-      ? await quid.methods.qd_amt_to_dollar_amt(qdAmountBN, currentTimestampBN).call()
-      : 0
+    const qdAmountCall = quid ? await quid.methods.qd_amt_to_dollar_amt(qdAmountBN, currentTimestampBN).call() : 0
 
     return qdAmountCall
   }
@@ -147,18 +145,19 @@ export const Mint = () => {
       setMintValue("")
 
       const sdaiAmount = await qdAmountToSdaiAmt(qdAmount, DELAY)
+      const sdaiString = sdaiAmount ? sdaiAmount.toString() : 0
 
       const allowanceBigNumber = await sdai.methods.allowance(account, addressQD).call()
 
-      const allowanceBigNumberBN = allowanceBigNumber.toString()
-      const addresQDBN = addressQD.toString()
+      const allowanceBigNumberBN = allowanceBigNumber ? allowanceBigNumber.toString() : 0
+      const addresQDBN = addressQD ? addressQD.toString() : 0
 
       console.log(
         "Start minting:",
         "\nCurrent allowance: ",
         formatUnits(allowanceBigNumberBN, 18),
         "\nNote amount: ",
-        formatUnits(sdaiAmount.toString(), 18)
+        formatUnits(sdaiString, 18)
       )
 
       if (parseInt(formatUnits(allowanceBigNumberBN, 18)) !== 0) {
@@ -169,7 +168,7 @@ export const Mint = () => {
 
       setState("approving")
 
-      await sdai.methods.approve(addressQD.toString(), sdaiAmount.toString()).send({ from: account })
+      if(account) await sdai.methods.approve(addressQD.toString(), sdaiAmount.toString()).send({ from: account })
 
       setNotifications([{ severity: "success", message: "Please wait for approving" }]) 
 
@@ -189,7 +188,11 @@ export const Mint = () => {
         formatUnits(allowanceBeforeMinting, 18)
       )
 
-      await quid.methods.deposit(beneficiaryAccount.toString(), qdAmount.toString(), addressSDAI.toString()).send({ from: account })
+      if (account) await quid.methods.deposit(
+        beneficiaryAccount.toString(), 
+        qdAmount.toString(), 
+        addressSDAI.toString()).send({ from: account }
+        )
 
       await getTotalInfo()
       await getUserInfo()
@@ -199,13 +202,10 @@ export const Mint = () => {
       setNotifications([{ severity: "success", message: "Your minting is pending!" }]) 
     } catch (err) {
       console.error(err)
-      var msg
-      let er = "MO::mint: supply cap exceeded"
-      if (err.error?.message === er || err.message === er) {
-        msg = "Please wait for more QD to become mintable..."
-      } else {
-        msg = err.error?.message || err.message
-      }
+
+      const er = "MO::mint: supply cap exceeded"
+      const msg = err.error?.message === er || err.message === er ? "Please wait for more QD to become mintable..." : err.error?.message || err.message
+      
       setNotifications([{ severity: "error", message: msg }]) 
     } finally {
       setState("none")
@@ -235,7 +235,7 @@ export const Mint = () => {
       <div className="mint-availability">
         <span className="mint-availabilityMax">
           <span style={{ color: "#02d802" }}>
-            {numberWithCommas(totalSupplyCap)}
+            {totalSupplyCap ? numberWithCommas(totalSupplyCap) : 0}
             &nbsp;
           </span>
           QD mintable

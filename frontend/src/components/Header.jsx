@@ -7,7 +7,7 @@ import "./Styles/Header.scss"
 
 export const Header = () => {
   const { 
-    connectToMetaMask, getTotalInfo, getSdai, 
+    connectToMetaMask, getTotalInfo, getUserInfo, getSdai,
     account, connected 
   } = useAppContext()
 
@@ -46,8 +46,10 @@ export const Header = () => {
     if (connected) {
       connectToMetaMask()
       updatedTotalInfo()
+    } else {
+      getUserInfo()
     }
-  }, [connected, connectToMetaMask, updatedTotalInfo])
+  }, [connected, connectToMetaMask, updatedTotalInfo, getUserInfo])
 
   const summary = (
     <div className="header-summary">
