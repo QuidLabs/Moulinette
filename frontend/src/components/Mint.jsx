@@ -14,7 +14,7 @@ import "./Styles/Mint.scss"
 export const Mint = () => {
   const DELAY = 60 * 60 * 8
 
-  const { getTotalInfo, getUserInfo, getTotalSupply, addressQD, addressSDAI, account, currentPrice, quid, sdai } = useAppContext()
+  const { getTotalInfo, getUserInfo, getTotalSupply, addressQD, addressSDAI, account, connected, currentPrice, quid, sdai } = useAppContext()
 
   const [mintValue, setMintValue] = useState("")
   const [sdaiValue, setSdaiValue] = useState(0)
@@ -69,14 +69,12 @@ export const Mint = () => {
   useEffect(() => {
     if (quid) updateTotalSupply()
 
-    if (consoleRef.current) {
-      consoleRef.current.scrollTop = consoleRef.current.scrollHeight
-    }
+    if (consoleRef.current) consoleRef.current.scrollTop = consoleRef.current.scrollHeight
 
-    if (account) localStorage.setItem("consoleNotifications", JSON.stringify(notifications))
-      else localStorage.setItem("consoleNotifications", JSON.stringify(''))
-
-  }, [updateTotalSupply, account, quid, notifications, isProcessing])
+    if (account && connected && quid) localStorage.setItem("consoleNotifications", JSON.stringify(notifications))
+    else localStorage.setItem("consoleNotifications", JSON.stringify(''))
+  
+  }, [updateTotalSupply, account, connected, quid, notifications, isProcessing])
 
   const handleChangeValue = (e) => {
     const regex = /^\d*(\.\d*)?$|^$/
@@ -282,9 +280,9 @@ export const Mint = () => {
               </div>
             ) : null}
           </div>
-          <button ref={buttonRef} type="submit" className="mint-submit">
+          <button ref={buttonRef} type="submit" className={isProcessing ? "mint-processing" : "mint-submit" }>
             {isProcessing ? "Processing" : state !== "none" ? `${state}` : "MINT"}
-            <div className="mint-glowEffect" />
+            <div className={isProcessing || !connected ? null : "mint-glowEffect"} />
           </button>
           <label style={{ position: "absolute", top: 165, right: -170 }}>
             <input
@@ -316,14 +314,14 @@ export const Mint = () => {
         </form>
         <div className="mint-console" ref={consoleRef}>
           <div className="mint-console-content">
-            {notifications.map((notification, index) => (
+            {notifications ? notifications.map((notification, index) => (
               <div
                 key={index}
                 className={`mint-console-line ${notification.severity}`}
               >
                 {notification.message}
               </div>
-            ))}
+            )): null}
             {isProcessing && (
               <div className="mint-console-line info">
                 Processing<span className="processing-dots">...</span>

@@ -280,46 +280,49 @@
 }
 
 .mint-submit {
-
   display: flex;
-  margin-top: 11px;
-  font-size: 14px;
+  margin-top: 40px;
+  margin-bottom: 35px;
+  color: #fff;
+  opacity: 0.7;
+  font-size: 28px;
   line-height: 24px;
   font-family: "Road Rage";
   border: none;
   font-weight: 600;
   background: none;
   position: relative;
-  user-select: none;
+  justify-content: center;
   cursor: pointer;
-  justify-content: space-around;
+}
 
-  &:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
+.mint-glowEffect {
+  border-radius: 25px; 
+  background: #66f519;
+  z-index: -1; 
+  width: auto;
+  height: 20px;
+  position: relative;
+  box-shadow: 0 0 50px 10px #66f519; 
+  opacity: 0.5;
+}
 
-  &:not(:disabled):hover {
-    .mint-submitBtnL1 {
-      color: #54b420;
-    }
-
-    .mint-glowEffect {
-      //box-shadow: 0 0 50px 0 #54b420;
-      display: none;
-    }
-  }
-
-  &.approving,
-  &.minting {
-    .mint-submitBtnL1 {
-      animation: mint-color 3s ease-in-out infinite;
-    }
-
-    .mint-glowEffect {
-      box-shadow: 0 0 50px 0px red;
-    }
-  }
+.mint-processing {
+  display: flex;
+  margin-top: 40px;
+  margin-bottom: 35px;
+  color: #fff;
+  opacity: 0.7;
+  font-size: 18px;
+  line-height: 24px;
+  font-family: "Road Rage";
+  border: none;
+  pointer-events: none;
+  font-weight: 600;
+  background: none;
+  position: relative;
+  justify-content: center;
+  cursor: pointer;
 }
 
 .mint-submitBtnL1 {
