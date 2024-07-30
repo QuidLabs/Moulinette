@@ -125,7 +125,7 @@ export const AppContextProvider = ({ children }) => {
     try {
       setAccountTimestamp((Date.now() / 1000).toFixed(0))
 
-      if (account && quid) {
+      if (connected, account && quid) {
 
         const qdAmount = parseUnits("1", 18).toBigInt()
 
@@ -149,7 +149,7 @@ export const AppContextProvider = ({ children }) => {
       console.warn(`Failed to get account info:`, error)
       return null
     }
-  }, [quid, account, currentTimestamp])
+  }, [quid, account, currentTimestamp, connected])
 
   const getSdai = useCallback(async () => {
     try {
