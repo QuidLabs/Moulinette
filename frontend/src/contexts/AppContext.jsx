@@ -210,7 +210,7 @@ export const AppContextProvider = ({ children }) => {
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
         setAccount(accounts[0])
 
-        if (provider) {
+        if (accounts && provider) {
           const web3Instance = new Web3(provider)
           const quidContract = new web3Instance.eth.Contract(QUID, addressQD)
           const sdaiContract = new web3Instance.eth.Contract(SDAI, addressSDAI)
@@ -218,16 +218,11 @@ export const AppContextProvider = ({ children }) => {
           setQuid(quidContract)
           setSdai(sdaiContract)
         }
-      }
-
-      if (quid && sdai && account) {
-        getSdaiBalance()
-        getQdBalance()
-      }
+      } 
     } catch (error) {
       console.warn(`Failed to connect:`, error)
     }
-  }, [getSdaiBalance, getQdBalance, account, provider, quid, sdai])
+  }, [account, provider])
 
 
   return (
@@ -241,6 +236,8 @@ export const AppContextProvider = ({ children }) => {
         getSales,
         getTotalSupply,
         setAllInfo,
+        getSdaiBalance, 
+        getQdBalance, 
         connected,
         connecting,
         currentTimestamp,

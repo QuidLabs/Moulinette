@@ -25,6 +25,7 @@ export const Mint = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [notifications, setNotifications] = useState(JSON.parse(localStorage.getItem("consoleNotifications")) || [])
   const [isProcessing, setIsProcessing] = useState(false)
+  const [startMsg, setStartMsg] = useState('')
 
   const inputRef = useRef(null)
   const buttonRef = useRef(null)
@@ -71,9 +72,13 @@ export const Mint = () => {
 
     if (consoleRef.current) consoleRef.current.scrollTop = consoleRef.current.scrollHeight
 
-    if (account && connected && quid) localStorage.setItem("consoleNotifications", JSON.stringify(notifications))
-    else localStorage.setItem("consoleNotifications", JSON.stringify(''))
+    if (account && connected && quid) {
+      localStorage.setItem("consoleNotifications", JSON.stringify(notifications))
+      setStartMsg('Terminal started. Mint is available!')
+    } else localStorage.setItem("consoleNotifications", JSON.stringify(''))
   
+    if(notifications[0] && !connected) setTimeout(() => setNotifications([]), 1000)
+
   }, [updateTotalSupply, account, connected, quid, notifications, isProcessing])
 
   const handleChangeValue = (e) => {
@@ -155,7 +160,7 @@ export const Mint = () => {
     try {
       const qdAmount = parseUnits(mintValue, 18)
       setIsProcessing(true)
-      setState("Processing")
+      setState("Processing. Please don't close or refresh page when terminal is working")
       setMintValue("")
 
       const sdaiAmount = await qdAmountToSdaiAmt(qdAmount, DELAY)
@@ -314,7 +319,7 @@ export const Mint = () => {
         </form>
         <div className="mint-console" ref={consoleRef}>
           <div className="mint-console-content">
-            {notifications && connected ? "Terminal started. Mint is available!" : "Connect your metamask"}
+            {notifications && connected ? startMsg : "Connect your MetaMask..."}
             {notifications ? notifications.map((notification, index) => (
               <div
                 key={index}
