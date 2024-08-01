@@ -14,7 +14,7 @@ just like the Earth's surface.
 ### re-staked sDAI, sUSDe
 
 Same core principle as Eigen:  
-earn extra (possibily slashing  
+earn extra (possibly slashing  
 some stake due to taking on  
 extra risk)...the counterparty  
 to this are token-holders that  

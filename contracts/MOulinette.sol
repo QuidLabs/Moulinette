@@ -66,7 +66,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     int24 internal UPPER_TICK; 
     int24 internal LOWER_TICK;
     error UnsupportedToken();
-
+    uint public MINTED; 
     uint public TOKEN_ID; // protocol manages one giant NFT deposit 
     // IUniswapV3Pool POOL; // the largest liquidity pool on UNIswapV3
 
@@ -394,6 +394,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
             day = Offering[i]; 
             ratio += FullMath.mulDiv(WAD, 
             day.credit - day.debit, day.debit);
+            MINTED += day.credit;
         }
         AVG_ROI = ratio / DAYS; // sum total of daily ROIs
         // divided by the number of days gives us the avg
@@ -423,13 +424,14 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
         Pledge storage pledge = quid[beneficiary];
 
         if (block.timestamp > START_DATE + 8 * DAYS) {
-            require(_capitalisation(0) >= 88, "wait"); 
+            require(_capitalisation(0) >= 100, "wait"); 
+            uint coverage = totalSupply() - MINTED;
 
-            // TODO absorb = credit / SUM_ROI x coverage
-            // coverage -= absorb
+            uint absorb = FullMath.mulDiv(WAD, 
+            pledge.offers[QUID].credit, SUM_ROI);
+            absorb = FullMath.mulDiv(coverage, absorb, WAD);
 
-            // pay amount - absorb
-            // 20% in crypto
+            // TODO
         }
         else {
             if (_capitalisation(0) < 71) { 
@@ -438,8 +440,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
                 amount = pledge.offers[QUID].debit; 
                 pledge.offers[QUID].debit = 0;
                 
-                // TODO too inefficient to wait for everyone to withdraw ?
-                // instead, allow re-using a QD balance in deposit() ??
+                // TODO  allow re-using a QD balance in deposit() ??
                 if (totalSupply() == 0) {
                     START_DATE = block.timestamp;
                 }

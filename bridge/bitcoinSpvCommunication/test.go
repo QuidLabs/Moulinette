@@ -6,9 +6,8 @@ import (
 )
 
 func SendTx(signatures []string) {
-	cmdArgs := append([]string{"spremo/send.js"}, signatures...)
-	fmt.Println("SACUUUU")
-	fmt.Println(signatures[0], "!!!!!!!!!")
+	cmdArgs := append([]string{"./send.js"}, signatures...)
+
 	cmd := exec.Command("node", cmdArgs...)
 
 	opt, err := cmd.CombinedOutput()
@@ -21,12 +20,12 @@ func SendTx(signatures []string) {
 
 func SignTx(destAddress string, amount string) string {
 	// Command to run
-	cmd := exec.Command("node", "spremo/app.js",
-		"1000000000000000000000000000000000000000000000000000000000000001", // Privatni kljuc
-		destAddress,                           // ovde saljemo bitcoin
-		"2MyUHzyJuWVjXCNV2JML2Muh56vSJt5PZr2", // multisig
-		amount,                                // amount
-		"512102347d79020cf8914031ed69aae2dd7f6e6ce7e036d2976e50c3e3c412165df74621037aaa7852ba48c949c6e7a98263999c60ab0f2dde7031eaa080245b8bb250e28552ae") // redeemSkripta
+	cmd := exec.Command("node", "./app.js",
+		"", // Private key
+		destAddress,
+		"", // multisig
+		amount,
+		"") // redeemScript
 
 	// Capture the output
 	output, err := cmd.CombinedOutput()
