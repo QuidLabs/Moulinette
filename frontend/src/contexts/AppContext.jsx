@@ -16,6 +16,9 @@ const contextState = {
   getUserInfo: () => { },
   getTotalSupply: () => { },
   setAllInfo: () => { },
+  changeButton: () => { },
+  setNotifications: () => { },
+  setStorage: () => { },
   connected: false,
   connecting: false,
   provider: {},
@@ -44,8 +47,41 @@ export const AppContextProvider = ({ children }) => {
 
   const [currentTimestamp, setAccountTimestamp] = useState(0)
 
+  const [notifications, setNotifications] = useState('')
 
   const SECONDS_IN_DAY = 86400
+
+  const getStorage = useCallback(() => {
+    try {
+      const notify = JSON.parse(localStorage.getItem("consoleNotifications")) || []
+
+      setNotifications(notify)
+    } catch (error) {
+      console.error("Error getting notifications:", error)
+    }
+  }, [])
+
+  const setStorage = useCallback((newNotifications) => {
+    try {
+      setNotifications(newNotifications)
+      
+      localStorage.setItem("consoleNotifications", JSON.stringify(newNotifications))
+    } catch (error) {
+      console.error("Error setting notifications:", error)
+    }
+  }, [])
+
+  const changeButton = useCallback((isProcessing, state) => {
+    try{
+      if (state) {
+        return (isProcessing ? 'off' : 'on');
+      } else {
+        return ('off');
+      }
+    } catch ( error ){
+      console.error(error)
+    }
+  }, [])
 
   const getTotalSupply = useCallback(async () => {
     try {
@@ -238,6 +274,10 @@ export const AppContextProvider = ({ children }) => {
         setAllInfo,
         getSdaiBalance, 
         getQdBalance, 
+        changeButton,
+        setNotifications,
+        setStorage,
+        getStorage,
         connected,
         connecting,
         currentTimestamp,
@@ -254,6 +294,7 @@ export const AppContextProvider = ({ children }) => {
         localMinted,
         totalDeposite,
         totalMint,
+        notifications,
         SECONDS_IN_DAY
       }}
     >
