@@ -9,17 +9,15 @@ import {TransferHelper} from "./interfaces/TransferHelper.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/interfaces/IERC4626.sol"; // sUSDE, sDAI
 
 import "./interfaces/AggregatorV3Interface.sol";
-// import {TickMath} from "./interfaces/math/TickMath.sol";
+import {TickMath} from "./interfaces/math/TickMath.sol";
 
 import {FullMath} from "./interfaces/math/FullMath.sol";
-
-/*
 import {LiquidityAmounts} from "./interfaces/math/LiquidityAmounts.sol";
 import {IUniswapV3Pool} from "./interfaces/IUniswapV3Pool.sol";
 import {INonfungiblePositionManager} from "./interfaces/INonfungiblePositionManager.sol";
-*/
 
 interface IWETH is IERC20 {
     function deposit() 
@@ -27,8 +25,8 @@ interface IWETH is IERC20 {
 }
 
 contract Moulinette is // en.wiktionary.org/wiki/moulinette
-    IERC721Receiver, ERC404 { // TODO tokenUri for 404 ;)
-
+    IERC721Receiver, ERC20 { 
+    address public SDAI;
     address public SUSDE;
     address public QUID;
 
@@ -45,8 +43,8 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     uint constant public MAX_PER_DAY = 7_777_777 * WAD; // mint cap (QD supply)
     
     uint constant public DAYS = 43 days; // of Lent
-    uint public START_PRICE = 50 * PENNY; // till 92
-    // All I ever ask is keep it 8 more than 92
+    uint public START_PRICE = 50 * PENNY; // to 92
+    // All I ever ask is keep it 8 more than...^^ with me 
     Pod[DAYS] Offering; uint public START_DATE;
     uint public AVG_ROI; uint public SUM_ROI; 
     // Sum: (QD / Total QD) x (ROI / AVG_ROI)
@@ -59,7 +57,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     uint constant public BAG = 100 * STACK;
 
     uint constant public WAD = 1e18; 
-    // INonfungiblePositionManager NFPM;
+    INonfungiblePositionManager NFPM;
     int24 constant INCREMENT = 60;
     int24 internal LAST_TWAP_TICK;
     // TODO VWMP in milestone 1 ?
@@ -68,7 +66,7 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
     error UnsupportedToken();
     uint public MINTED; 
     uint public TOKEN_ID; // protocol manages one giant NFT deposit 
-    // IUniswapV3Pool POOL; // the largest liquidity pool on UNIswapV3
+    IUniswapV3Pool POOL; // the largest liquidity pool on UNIswapV3
 
     uint internal _ETH_PRICE; // TODO delete when finished testing
     uint internal _BTC_PRICE; // TODO delete when finished testing
@@ -104,14 +102,9 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
         uint debit; // actual quantity of tokens pledged 
     } // for QD, credit is the contribution to weighted
     // sum of (QD / total QD) times (ROI / avg ROI)...
-    
-     function tokenURI(uint256 id) public pure override returns (string memory){
-        return string.concat("http://yo.quid.io/1729/", Strings.toString(id));
-        // the state of your networked stake...
-    }
 
     // TODO remove _susde constructor param (for Sepolia testing only)...
-    constructor(address _susde /* address[] seed */) ERC20("QU!D", "QD") { 
+    constructor(address _susde, address _sdai /* address[] seed */) ERC20("QU!D", "QD") { 
         
         POOL = IUniswapV3Pool(0xD1787BA366fea7F69212Dfc0a3637ACfEFdf7f25); // Sepolia
         // TODO replace address (below is for mainnet deployment)
@@ -121,7 +114,9 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
         // TODO replace address (below is for mainnet deployment)
         // address nfpm = 0xC36442b4a4522E871399CD717aBDD847Ab11FE88;
 
-        SUSDE = _susde; NFPM = INonfungiblePositionManager(nfpm);
+        SUSDE = _susde; SDAI = _sdai; 
+        
+        NFPM = INonfungiblePositionManager(nfpm);
         START_DATE = block.timestamp; QUID = address(this);
         
         TransferHelper.safeApprove(WETH, nfpm, type(uint256).max);
@@ -431,7 +426,20 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
             pledge.offers[QUID].credit, SUM_ROI);
             absorb = FullMath.mulDiv(coverage, absorb, WAD);
 
-            // TODO
+            if (amount > absorb) {
+                uint remainder = amount - absorb;
+                uint tithe = FullMath.mulDiv(1, remainder, 10); 
+                amount = remainder - 2 * tithe;
+
+                uint in_eth = FullMath.mulDiv(WAD, tithe, _getPrice(WETH));
+                uint in_btc = FullMath.mulDiv(WAD, tithe, _getPrice(WBTC));
+
+                require(IERC20(WETH).balanceOf(QUID) > in_eth, "not enough");
+                require(IERC20(WBTC).balanceOf(QUID) > in_btc, "not enough");
+                
+                TransferHelper.safeTransfer(WETH, msg.sender, in_eth);
+                TransferHelper.safeTransfer(WBTC, msg.sender, in_btc);
+            }
         }
         else {
             if (_capitalisation(0) < 71) { 
@@ -447,8 +455,37 @@ contract Moulinette is // en.wiktionary.org/wiki/moulinette
             }     
         }
         if (amount > 0) {
-            // TODO withdraw USD evenly 
-            // 
+            uint reserveSDAI = IERC20(SDAI).balanceOf(QUID);
+            uint reserveSUSDE = IERC20(SUSDE).balanceOf(QUID);
+
+            require(quid[QUID].offers[QUID].debit 
+                == reserveSDAI + reserveSUSDE, "don't add up");
+
+            uint totalBalance = reserveSDAI + reserveSUSDE;
+            uint newTotalBalance = totalBalance - amount;
+            uint targetBalance = newTotalBalance / 2;
+
+            uint withdrawFromSDAI = reserveSDAI > targetBalance ? reserveSDAI - targetBalance : 0;
+            uint withdrawFromSUSDE = reserveSUSDE > targetBalance ? reserveSUSDE - targetBalance : 0;
+
+            uint totalWithdrawn = withdrawFromSDAI + withdrawFromSUSDE;
+            if (totalWithdrawn < amount) {
+                uint256 remainingAmount = amount - totalWithdrawn;
+                if (reserveSDAI - withdrawFromSDAI > remainingAmount / 2) {
+                    withdrawFromSDAI += remainingAmount / 2;
+                    remainingAmount -= remainingAmount / 2;
+                } else {
+                    withdrawFromSDAI += reserveSDAI - withdrawFromSDAI;
+                    remainingAmount -= reserveSDAI - withdrawFromSDAI;
+                }
+                if (reserveSUSDE - withdrawFromSUSDE > remainingAmount) {
+                    withdrawFromSUSDE += remainingAmount;
+                } else {
+                    withdrawFromSUSDE += reserveSUSDE - withdrawFromSUSDE;
+                }
+            }
+            IERC4626(SDAI).redeem(withdrawFromSDAI, msg.sender, QUID);
+            IERC4626(SUSDE).redeem(withdrawFromSUSDE, msg.sender, QUID);
         }
     }
 

@@ -41,8 +41,8 @@ one's ROI relative to the [average](https://github.com/QuidLabs/QD/blob/main/con
 The total $ value of tokens  
 insured cannot exceed the $  
 staked as insurance capital,  
-and the total coverage that  
-is [carryable](https://en.wikipedia.org/wiki/Cost_of_carry) is also capped.  
+and total [carried](https://en.wikipedia.org/wiki/Cost_of_carry) coverage  
+([encumbrance](https://x.com/lex_node/status/1747292264701862026)) is capped.  
 
 ### optional governance
 
