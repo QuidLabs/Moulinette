@@ -16,6 +16,10 @@ const contextState = {
   getUserInfo: () => { },
   getTotalSupply: () => { },
   setAllInfo: () => { },
+  changeButton: () => { },
+  setNotifications: () => { },
+  setStorage: () => { },
+  getStorage: () => { },
   connected: false,
   connecting: false,
   provider: {},
@@ -44,8 +48,41 @@ export const AppContextProvider = ({ children }) => {
 
   const [currentTimestamp, setAccountTimestamp] = useState(0)
 
+  const [notifications, setNotifications] = useState('')
 
   const SECONDS_IN_DAY = 86400
+
+  //Get storage
+
+  const getStorage = useCallback(() => {
+    try {
+      //realizations
+    } catch (error) {
+      console.error("Error getting notifications:", error)
+    }
+  }, [])
+
+  const setStorage = useCallback((newNotifications) => {
+    try {
+      setNotifications(newNotifications)
+
+      localStorage.setItem("consoleNotifications", JSON.stringify(newNotifications))
+    } catch (error) {
+      console.error("Error setting notifications:", error)
+    }
+  }, [])
+
+  const changeButton = useCallback((isProcessing, state) => {
+    try{
+      if (state) {
+        return (isProcessing ? 'off' : 'on');
+      } else {
+        return ('off');
+      }
+    } catch ( error ){
+      console.error(error)
+    }
+  }, [])
 
   const getTotalSupply = useCallback(async () => {
     try {
@@ -228,7 +265,6 @@ export const AppContextProvider = ({ children }) => {
   return (
     <AppContext.Provider
       value={{
-        account,
         connectToMetaMask,
         getSdai,
         getTotalInfo,
@@ -238,6 +274,11 @@ export const AppContextProvider = ({ children }) => {
         setAllInfo,
         getSdaiBalance, 
         getQdBalance, 
+        changeButton,
+        setNotifications,
+        setStorage,
+        getStorage,
+        account,
         connected,
         connecting,
         currentTimestamp,
@@ -254,6 +295,7 @@ export const AppContextProvider = ({ children }) => {
         localMinted,
         totalDeposite,
         totalMint,
+        notifications,
         SECONDS_IN_DAY
       }}
     >
