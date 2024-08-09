@@ -14,8 +14,7 @@ import "./Styles/Mint.scss"
 export const Mint = () => {
   const DELAY = 60 * 60 * 8
 
-  const { getTotalInfo, getUserInfo, getTotalSupply, changeButton, setStorage, getStorage,
-    addressQD, addressSDAI, account, connected, currentPrice, notifications, quid, sdai } = useAppContext()
+  const { getTotalInfo, getUserInfo, getTotalSupply, addressQD, addressSDAI, account, connected, currentPrice, quid, sdai } = useAppContext()
 
   const [mintValue, setMintValue] = useState("")
   const [sdaiValue, setSdaiValue] = useState(0)
@@ -24,25 +23,15 @@ export const Mint = () => {
   const [isSameBeneficiary, setIsSameBeneficiary] = useState(true)
   const [beneficiary, setBeneficiary] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [notifications, setNotifications] = useState(JSON.parse(localStorage.getItem("consoleNotifications")) || [])
   const [isProcessing, setIsProcessing] = useState(false)
   const [startMsg, setStartMsg] = useState('')
-
-
-  const [glowClass, setGlowClass] = useState('')
 
   const inputRef = useRef(null)
   const buttonRef = useRef(null)
   const consoleRef = useRef(null)
 
   const handleCloseModal = () => setIsModalOpen(false)
-
-  const calculatePrice = useCallback((num) => {
-    try {
-      return Number(num.toFixed(2)).toString()
-    } catch (error) {
-      console.error(error)
-    }
-  }, [])
 
   const handleAgreeTerms = async () => {
     setIsModalOpen(false)
@@ -84,22 +73,13 @@ export const Mint = () => {
     if (consoleRef.current) consoleRef.current.scrollTop = consoleRef.current.scrollHeight
 
     if (account && connected && quid) {
-      getStorage()
+      localStorage.setItem("consoleNotifications", JSON.stringify(notifications))
       setStartMsg('Terminal started. Mint is available!')
-
-      const classState = changeButton(isProcessing, true)
-
-      setGlowClass(classState)
     } else localStorage.setItem("consoleNotifications", JSON.stringify(''))
+  
+    if(notifications[0] && !connected) setTimeout(() => setNotifications([]), 1000)
 
-    if (notifications[0] && !connected) setTimeout(() => {
-      setStorage([])
-
-      const classState = changeButton(isProcessing, false)
-
-      setGlowClass(classState)
-    }, 500)
-  }, [updateTotalSupply, changeButton, getStorage, setStorage, account, connected, quid, notifications, isProcessing])
+  }, [updateTotalSupply, account, connected, quid, notifications, isProcessing])
 
   const handleChangeValue = (e) => {
     const regex = /^\d*(\.\d*)?$|^$/
@@ -126,7 +106,7 @@ export const Mint = () => {
     }
 
     if (!isSameBeneficiary && beneficiary === "") {
-      setStorage(prevNotifications => [
+      setNotifications(prevNotifications => [
         ...prevNotifications,
         { severity: "error", message: "Please select a beneficiary" }
       ])
@@ -134,7 +114,7 @@ export const Mint = () => {
     }
 
     if (!account) {
-      setStorage(prevNotifications => [
+      setNotifications(prevNotifications => [
         ...prevNotifications,
         { severity: "error", message: "Please connect your wallet" }
       ])
@@ -142,7 +122,7 @@ export const Mint = () => {
     }
 
     if (!mintValue.length) {
-      setStorage(prevNotifications => [
+      setNotifications(prevNotifications => [
         ...prevNotifications,
         { severity: "error", message: "Please enter amount" }
       ])
@@ -150,7 +130,7 @@ export const Mint = () => {
     }
 
     if (+mintValue < 50) {
-      setStorage(prevNotifications => [
+      setNotifications(prevNotifications => [
         ...prevNotifications,
         { severity: "error", message: "The amount should be more than 50" }
       ])
@@ -158,7 +138,7 @@ export const Mint = () => {
     }
 
     if (+mintValue > totalSupplyCap) {
-      setStorage(prevNotifications => [
+      setNotifications(prevNotifications => [
         ...prevNotifications,
         { severity: "error", message: "The amount should be less than the maximum mintable QD" }
       ])
@@ -170,7 +150,7 @@ export const Mint = () => {
     }
 
     if (+sdaiValue > (await balance())) {
-      setStorage(prevNotifications => [
+      setNotifications(prevNotifications => [
         ...prevNotifications,
         { severity: "error", message: "Cost shouldn't be more than your sDAI balance" }
       ])
@@ -190,7 +170,7 @@ export const Mint = () => {
       const allowanceBigNumberBN = allowanceBigNumber ? allowanceBigNumber.toString() : 0
       const addresQDBN = addressQD ? addressQD.toString() : 0
 
-      setStorage(prevNotifications => [
+      setNotifications(prevNotifications => [
         ...prevNotifications,
         { severity: "info", message: `Start minting:\nCurrent allowance: ${formatUnits(allowanceBigNumberBN, 18)}\nNote amount: ${formatUnits(sdaiString, 18)}` }
       ])
@@ -204,21 +184,21 @@ export const Mint = () => {
 
       if (account) await sdai.methods.approve(addressQD.toString(), sdaiAmount.toString()).send({ from: account })
 
-      setStorage(prevNotifications => [
+      setNotifications(prevNotifications => [
         ...prevNotifications,
         { severity: "success", message: "Please wait for approving" }
       ])
 
       setState("minting")
 
-      setStorage(prevNotifications => [
+      setNotifications(prevNotifications => [
         ...prevNotifications,
         { severity: "success", message: "Please check your wallet" }
       ])
 
       const allowanceBeforeMinting = await sdai.methods.allowance(account, addressQD).call()
 
-      setStorage(prevNotifications => [
+      setNotifications(prevNotifications => [
         ...prevNotifications,
         { severity: "info", message: `Start minting:\nQD amount: ${mintValue}\nCurrent account: ${account}\nAllowance: ${formatUnits(allowanceBeforeMinting, 18)}` }
       ])
@@ -232,7 +212,7 @@ export const Mint = () => {
       await getTotalInfo()
       await getUserInfo()
 
-      setStorage(prevNotifications => [
+      setNotifications(prevNotifications => [
         ...prevNotifications,
         { severity: "success", message: "Your minting is pending!" }
       ])
@@ -240,7 +220,7 @@ export const Mint = () => {
       const er = "MO::mint: supply cap exceeded"
       const msg = err.error?.message === er || err.message === er ? "Please wait for more QD to become mintable..." : err.error?.message || err.message
 
-      setStorage(prevNotifications => [
+      setNotifications(prevNotifications => [
         ...prevNotifications,
         { severity: "error", message: msg }
       ])
@@ -263,7 +243,7 @@ export const Mint = () => {
           <div className="mint-header">
             <span className="mint-title">
               <span className="mint-totalSupply">
-                <span style={{ fontWeight: 400, color: '#4ad300' }}>
+                <span style={{ fontWeight: 400 , color: '#4ad300'}}>
                   {totalSupplyCap ? numberWithCommas(totalSupplyCap) : 0}
                   &nbsp;
                 </span>
@@ -293,7 +273,7 @@ export const Mint = () => {
             <div className="mint-subLeft">
               Cost in $
               <strong>
-                {sdaiValue === 0 ? "sDAI Amount" : numberWithCommas(calculatePrice(sdaiValue * mintValue))}
+                {sdaiValue === 0 ? "sDAI Amount" : numberWithCommas(parseFloat(sdaiValue))}
               </strong>
             </div>
             {mintValue ? (
@@ -305,12 +285,9 @@ export const Mint = () => {
               </div>
             ) : null}
           </div>
-          <button ref={buttonRef} type="submit" className={isProcessing ? "mint-processing" : "mint-submit"}>
+          <button ref={buttonRef} type="submit" className={isProcessing ? "mint-processing" : "mint-submit" }>
             {isProcessing ? "Processing" : state !== "none" ? `${state}` : "MINT"}
-            <div className={`mint-glowEffect mint-glow-${glowClass}`} />
-          </button>
-          <button type="button" className="dd-submit">
-            DROP DOWN
+            <div className={isProcessing || !connected ? null : "mint-glowEffect"} />
           </button>
           <label style={{ position: "absolute", top: 165, right: -170 }}>
             <input
@@ -350,7 +327,7 @@ export const Mint = () => {
               >
                 {notification.message}
               </div>
-            )) : null}
+            )): null}
             {isProcessing && (
               <div className="mint-console-line info">
                 Processing<span className="processing-dots">...</span>

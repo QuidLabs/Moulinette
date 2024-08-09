@@ -10,6 +10,7 @@ const MaintPage = () => {
   return (
     <React.Fragment>
       <Swiper
+        /*onSwiper={(swiper) => setSwiperRef(swiper)}*/
         slidesPerView={1}
         direction={'vertical'}
         className="main-carousel"
