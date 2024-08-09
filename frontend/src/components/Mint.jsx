@@ -252,8 +252,8 @@ export const Mint = () => {
   }
 
   const handleSetMaxValue = async () => {
-    if (totalSupplyCap) setMintValue(totalSupplyCap)
-    if (inputRef.current) inputRef.current.focus()
+    if (inputRef.current > totalSupplyCap) setMintValue(totalSupplyCap)
+    else inputRef.current.focus()
   }
 
   return (
