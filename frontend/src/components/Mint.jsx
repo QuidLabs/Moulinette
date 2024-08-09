@@ -14,7 +14,7 @@ import "./Styles/Mint.scss"
 export const Mint = () => {
   const DELAY = 60 * 60 * 8
 
-  const { getTotalInfo, getUserInfo, getTotalSupply, changeButton, getStorage, setStorage,
+  const { getTotalInfo, getUserInfo, getTotalSupply, changeButton, setStorage, getStorage,
     addressQD, addressSDAI, account, connected, currentPrice, notifications, quid, sdai } = useAppContext()
 
   const [mintValue, setMintValue] = useState("")
@@ -308,6 +308,9 @@ export const Mint = () => {
           <button ref={buttonRef} type="submit" className={isProcessing ? "mint-processing" : "mint-submit"}>
             {isProcessing ? "Processing" : state !== "none" ? `${state}` : "MINT"}
             <div className={`mint-glowEffect mint-glow-${glowClass}`} />
+          </button>
+          <button type="button" className="dd-submit">
+            DROP DOWN
           </button>
           <label style={{ position: "absolute", top: 165, right: -170 }}>
             <input

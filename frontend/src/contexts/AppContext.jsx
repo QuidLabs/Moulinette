@@ -19,6 +19,7 @@ const contextState = {
   changeButton: () => { },
   setNotifications: () => { },
   setStorage: () => { },
+  getStorage: () => { },
   connected: false,
   connecting: false,
   provider: {},
@@ -51,11 +52,11 @@ export const AppContextProvider = ({ children }) => {
 
   const SECONDS_IN_DAY = 86400
 
+  //Get storage
+
   const getStorage = useCallback(() => {
     try {
-      const notify = JSON.parse(localStorage.getItem("consoleNotifications")) || []
-
-      setNotifications(notify)
+      //realizations
     } catch (error) {
       console.error("Error getting notifications:", error)
     }
@@ -64,7 +65,7 @@ export const AppContextProvider = ({ children }) => {
   const setStorage = useCallback((newNotifications) => {
     try {
       setNotifications(newNotifications)
-      
+
       localStorage.setItem("consoleNotifications", JSON.stringify(newNotifications))
     } catch (error) {
       console.error("Error setting notifications:", error)
@@ -264,7 +265,6 @@ export const AppContextProvider = ({ children }) => {
   return (
     <AppContext.Provider
       value={{
-        account,
         connectToMetaMask,
         getSdai,
         getTotalInfo,
@@ -278,6 +278,7 @@ export const AppContextProvider = ({ children }) => {
         setNotifications,
         setStorage,
         getStorage,
+        account,
         connected,
         connecting,
         currentTimestamp,
