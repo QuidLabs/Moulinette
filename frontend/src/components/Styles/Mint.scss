@@ -102,7 +102,6 @@
   color: #fff;
   font-family: "Road Rage";
   opacity: 0.8;
-  user-select: none;
 
   &::placeholder {
     font-family: "Road Rage";
@@ -143,7 +142,7 @@
 }
 
 .mint-checkBox {
-  position: relative !important;
+  position: relative;
   appearance: none;
   box-sizing: content-box;
   margin: 8px 8px 0 0;
@@ -151,12 +150,13 @@
 
   // circle
   &:before {
-    content: '';
+    content: '✔';
+    font-weight: bold; 
     display: block;
     box-sizing: content-box;
     width: 12px;
     height: 12px;
-    border: 2px solid #ccc;
+    border: 2px solid #54b420;
     transition: 0.2s border-color ease;
   }
 
@@ -166,8 +166,8 @@
   }
 
   &:disabled:before {
-    border-color: #ccc;
-    background-color: #ccc;
+    border-color: #54b420;
+    background-color: #54b420;
   }
 
   // dot
@@ -260,10 +260,7 @@
   font-weight: 600;
   opacity: 0;
   animation-fill-mode: forwards;
-  pointer-events: none;
 }
-
-
 
 .mint-maxButton {
   display: block;
@@ -322,8 +319,6 @@
     margin-right: 6px;
   }
 }
-
-
 
 @keyframes glowEffect {
   0% {
@@ -573,16 +568,57 @@
 
 @keyframes mint-toggleOnCheckbox {
   0% {
-    opacity: 0;
-    transform: translate(-50%, -85%) scale(0) rotate(45deg);
+    opacity: 1;
+    transform: scale(1) rotate(-0deg) perspective(800px);
   }
 
-  70% {
-    opacity: 1;
-    transform: translate(-50%, -85%) scale(0.9) rotate(45deg);
+  50% {
+    opacity: 0;
+    transform: rotate(-360deg) perspective(400px);
   }
 
   100% {
-    transform: translate(-50%, -85%) scale(0.8) rotate(45deg);
+    opacity: 1;
+    transform: scale(0) rotate(-720deg) perspective(200px);
   }
+}
+
+.mint-dollarSign {
+  font-size: 64px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.5s ease-in-out;
+}
+
+.mint-dollarSign:hover {
+  transform: rotate(360deg) scale(0);
+}
+
+.mint-links {
+  display: none;
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.mint-dollarSign.rotated + .mint-links {
+  display: block;
+  opacity: 1;
+}
+
+.mint-link {
+  display: block;
+  margin-top: 10px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: blue;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.mint-link:hover {
+  text-decoration: none;
 }

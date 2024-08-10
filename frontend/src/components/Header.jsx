@@ -74,15 +74,6 @@ export const Header = () => {
     </div>
   )
 
-  const balanceBlock = (
-    <div className="header-summaryEl">
-      <div className="header-summaryElTitle">sDAI balance</div>
-      <div className="header-summaryElValue">
-        ${numberWithCommas(parseFloat(actualUsd))}
-      </div>
-    </div>
-  )
-
   return (
     <header className="header-root">
       <div className="header-logoContainer">
@@ -90,7 +81,6 @@ export const Header = () => {
       </div>
       {connected ? summary : null}
       <div className="header-walletContainer">
-        {connected ? balanceBlock : null}
         {connected ? (
           <div className="header-wallet">
             <button className="header-wallet" onClick={() => getSdai()}>

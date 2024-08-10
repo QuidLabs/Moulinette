@@ -27,7 +27,6 @@ export const Mint = () => {
   const [isProcessing, setIsProcessing] = useState(false)
   const [startMsg, setStartMsg] = useState('')
 
-
   const [glowClass, setGlowClass] = useState('')
 
   const inputRef = useRef(null)
@@ -281,9 +280,13 @@ export const Mint = () => {
               placeholder="Mint amount"
               ref={inputRef}
             />
-            <label htmlFor="mint-input" className="mint-dollarSign">
+            <button className="mint-dollarSign" id="mint-button">
               QD
-            </label>
+            </button>
+            <div className="mint-links">
+              <button href="#" className="mint-link">Link 1</button>
+              <button href="#" className="mint-link">Link 2</button>
+            </div>
             <button className="mint-maxButton" onClick={handleSetMaxValue} type="button">
               Max
               <Icon preserveAspectRatio="none" className="mint-maxButtonBackground" name="btn-bg" />
