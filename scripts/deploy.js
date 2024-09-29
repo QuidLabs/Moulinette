@@ -20,6 +20,7 @@ function loadAddresses() {
     return JSON.parse(data);
   }
   return {};
+  // TODO write to constant.jsx
 }
 
 // Save the deployed contract addresses to the file
@@ -152,6 +153,8 @@ async function main() {
     }
     console.log('approving')
     tx = await USDE.approve(addresses.Moulinette, rack)
+    await tx.wait()
+
     receipt = await USDE.allowance(beneficiary, addresses.Moulinette)
     console.log('allowance', receipt)
     balance = await USDE.balanceOf(addresses.Moulinette)
@@ -181,21 +184,21 @@ async function main() {
     tx = await MO.deposit(beneficiary, 0, WETH, false, {
       value: amountInWei, // Attach Ether to transaction
     });
-    await tx.await()
+    await tx.wait()
 
     myETH = await provider.getBalance(beneficiary) // TODO print before and after
     console.log('myETH after', myETH)
     myETH = await provider.getBalance(addresses.Moulinette) // TODO print before and after
     console.log('ETH after MO', myETH)
-    console.log("setting price")
-    // simulate a price drop, so that we can claim 
-    tx = await MO.set_price_eth(false, false) 
-    await tx.wait()
+    // console.log("setting price")
+    // // simulate a price drop, so that we can claim 
+    // tx = await MO.set_price_eth(false, false) 
+    // await tx.wait()
 
-    console.log("calling repack")
-    // simulate a price drop, so that we can claim 
-    tx = await MO.repackNFT() 
-    await tx.wait()
+    // console.log("calling repack")
+    // // simulate a price drop, so that we can claim 
+    // tx = await MO.repackNFT() 
+    // await tx.wait()
     // console.log() TODO print the NFT id before and after price change
 
     // console.log("calling fold")

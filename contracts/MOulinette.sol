@@ -372,11 +372,11 @@ contract MO is Ownable {
     function _swap(uint amount0, uint amount1) internal returns (uint, uint) {
         SwapState memory state; state.twapTick = _getTWAP(true);
         (state.sqrtPriceX96, state.currentTick,,,,,) = POOL.slot0();
-        // 100 = 1% max tick difference 
+        // 100 = 1% max tick difference // TODO attack vector?
         // (protection from price manipulation attacks / sandwich attacks)
-        require(state.twapTick > 0 && (state.twapTick > state.currentTick 
+        require(state.twapTick > 0 /* && (state.twapTick > state.currentTick 
         && ((state.twapTick - state.currentTick) < 100)) || (state.twapTick <= state.currentTick  
-        && ((state.currentTick  - state.twapTick) < 100)), "price delta");
+        && ((state.currentTick  - state.twapTick) < 100)) */, "price delta");
 
         state.priceX96 = FullMath.mulDiv(uint256(state.sqrtPriceX96), 
                                          uint256(state.sqrtPriceX96), Q96);
@@ -450,7 +450,6 @@ contract MO is Ownable {
     // enough for countin' when dealin's done."
     function redeem(uint amount) 
         external returns (uint absorb) {
-
         uint max = QUID.balanceOf(_msgSender());
         amount = _min(max, QUID.matureBalanceOf(_msgSender())); 
         uint share = FullMath.mulDiv(WAD, amount, max); // %
@@ -469,7 +468,6 @@ contract MO is Ownable {
             absorb = FullMath.mulDiv(absorb, share, WAD);
         }   
         // emit AbsorbInRedeem(absorb);
-        
         QUID.burn(_msgSender(), amount); 
 
         // convert amount from QD to value in dollars
@@ -484,13 +482,9 @@ contract MO is Ownable {
             // after taking into 
             // account total liabilities 
             uint third = 3 * amount / 10; 
-            // 1/3 because, originally,
-            // QD was ~70% liquid, so 
-            // only 70% of the amount 
-            // is returned as DAI/USDe 
             // emit ThirdInRedeem(third);
             // emit QuidUSDCinRedeemBefore(pledges[address(this)].work.debit);
-            // draw_stables(_msgSender(), amount - third); // TODO uncomment
+            // draw_stables(_msgSender(), amount - third); // TODO uncomment !
             // convert 1/3 of amount into USDC precision...
             uint usdc = FullMath.mulDiv(1000000, third, WAD);
             // emit USDCinRedeem(usdc);
@@ -664,7 +658,7 @@ contract MO is Ownable {
                     in_dollars, "insuring too much ether"
                 ); 
                 pledges[beneficiary] = pledge; // save changes
-            } _repackNFT(amount, 0); // 0 represents USDC
+            } // _repackNFT(amount, 0); // 0 represents USDC // TODO
         } 
     }
     

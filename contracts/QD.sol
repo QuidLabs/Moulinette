@@ -349,9 +349,6 @@ contract Quid is ERC20,
             // MO(Moulinette).draw_stables(from, SALARY); // TODO uncomment
         } // TODO check off by one with batch
         return this.onERC721Received.selector; 
-        // "independent money, might cop me a Rari,
-        // to think this all started from thoughts 
-        // inside my noggin', but creativity easy"
     }
     function restart() public { // TODO remove, Sepolia only
         if (START != 0) {
