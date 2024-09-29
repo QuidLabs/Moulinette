@@ -1,0 +1,481 @@
+.mint {
+  display: flex;
+  flex-direction: column;
+  align-self: center;
+  justify-self: center;
+  margin: 0 auto;
+  position: relative;
+  align-items: stretch;
+}
+
+.mint-root {
+  display: flex;
+  flex-direction: column;
+  align-self: center;
+  justify-self: center;
+  margin: 0 auto;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  position: relative;
+}
+
+.mint-notifications {
+  margin-top: 20px;
+  font-size: 14px;
+}
+
+.mint-notifications.success {
+  color: #02d802;
+}
+
+.mint-notifications.error {
+  color: #d80202;
+}
+
+.mint-availability {
+  margin-bottom: 16px;
+}
+
+.mint-availabilityTitle {
+  color: #ffffff;
+  line-height: 28px;
+  font-size: 18px;
+  margin-right: 6px;
+}
+
+.mint-availabilityCurrent {
+  color: #ffffff;
+  line-height: 28px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.mint-availabilityDivideSign {
+  margin: 0 4px;
+  font-size: 14px;
+  line-height: 24px;
+  color: #928263;
+}
+
+.mint-availabilityMax {
+  font-size: 14px;
+  line-height: 24px;
+  color: #e0c89a;
+}
+
+.mint-inputContainer {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #352200;
+  width: 640px;
+}
+
+.mint-dollarSign {
+  font-family: "Road Rage";
+  margin-right: 12px;
+  opacity: 0.8;
+  height: 112px;
+  font-size: 108px;
+  color: #54b420;
+  user-select: none;
+}
+
+.mint-idSign {
+  font-family: "Road Rage";
+  margin-right: 12px;
+  opacity: 0.8;
+  height: 30px;
+  font-size: 28px;
+  color: #54b420;
+  user-select: none;
+}
+
+.mint-input {
+  min-width: 600px;
+  height: 112px;
+  font-size: 108px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-family: "Road Rage";
+  opacity: 0.8;
+  user-select: none;
+
+  &::placeholder {
+    font-family: "Road Rage";
+    opacity: 0.33;
+    line-height: 112px;
+    font-size: 108px;
+    color: #fff;
+  }
+
+  input:-webkit-autofill {
+    -webkit-text-fill-color: transparent !important;
+  }
+}
+
+.mint-beneficiaryInput {
+  width: 100%;
+  height: 30px;
+  font-size: 28px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-family: "Road Rage";
+  opacity: 0.8;
+  user-select: none;
+
+  &::placeholder {
+    font-family: "Road Rage";
+    opacity: 0.33;
+    line-height: 30px;
+    font-size: 28px;
+    color: #fff;
+  }
+
+  input:-webkit-autofill {
+    -webkit-text-fill-color: transparent !important;
+  }
+}
+
+.mint-checkBox {
+  position: relative !important;
+  appearance: none;
+  box-sizing: content-box;
+  margin: 8px 8px 0 0;
+  overflow: hidden;
+
+  // circle
+  &:before {
+    content: '';
+    display: block;
+    box-sizing: content-box;
+    width: 12px;
+    height: 12px;
+    border: 2px solid #ccc;
+    transition: 0.2s border-color ease;
+  }
+
+  &:checked:before {
+    border-color: #54b420;
+    transition: 0.5s border-color ease;
+  }
+
+  &:disabled:before {
+    border-color: #ccc;
+    background-color: #ccc;
+  }
+
+  // dot
+  &:after {
+    content: '';
+    display: block;
+    position: absolute;
+    box-sizing: content-box;
+    top: 50%;
+    left: 50%;
+    transform-origin: 50% 50%;
+    background-color: #54b420;
+    width: 12px;
+    height: 12px;
+    border-radius: 100vh;
+    transform: translate(-50%, -50%) scale(0);
+  }
+
+  &[type="checkbox"] {
+    &:before {
+      border-radius: 12px / 4;
+    }
+
+    &:after {
+      width: 12px * 0.6;
+      height: 12px;
+      border-radius: 0;
+      transform: translate(-50%, -85%) scale(0) rotate(45deg);
+      background-color: transparent;
+      box-shadow: 4px 4px 0px 0px #54b420;
+    }
+
+    &:checked:after {
+      animation: mint-toggleOnCheckbox 0.2s ease forwards;
+    }
+  }
+
+  &[type="checkbox"].filled {
+    &:before {
+      border-radius: 12px / 4;
+      transition: 0.2s border-color ease, 0.2s background-color ease;
+    }
+
+    &:checked:not(:disabled):before {
+      background-color: #54b420;
+    }
+
+    &:not(:disabled):after {
+      box-shadow: 4px 4px 0px 0px white;
+    }
+  }
+}
+
+.mint-maxButton {
+  display: block;
+  margin-top: 45px;
+  background: none;
+  border: none;
+  color: #54b420;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: "Road Rage";
+  position: relative;
+  user-select: none;
+
+  &:hover>.mint-maxButtonBackground {
+    opacity: 0.2;
+  }
+}
+
+.mint-maxButtonBackground {
+  color: #54b420;
+  position: relative;
+  pointer-events: none;
+  z-index: -1;
+  top: -20px;
+  opacity: 0;
+}
+
+.mint-sub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.mint-subLeft {
+  font-size: 18px;
+  line-height: 28px;
+  font-weight: 300;
+  color: #ffffff;
+  font-weight: 300;
+
+  strong {
+    font-weight: 600;
+    margin-left: 6px;
+  }
+}
+
+.mint-subRight {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 300;
+
+  z strong {
+    font-weight: 600;
+    margin-right: 6px;
+  }
+}
+
+.mint-submit {
+  display: flex;
+  margin-top: 40px;
+  margin-bottom: 35px;
+  color: #fff;
+  opacity: 0.7;
+  font-size: 28px;
+  line-height: 24px;
+  font-family: "Road Rage";
+  border: none;
+  font-weight: 600;
+  background: none;
+  position: relative;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.mint-glowEffect {
+  border-radius: 25px; 
+  background: #66f519;
+  z-index: -1; 
+  width: auto;
+  height: 20px;
+  position: relative;
+  box-shadow: 0 0 50px 10px #66f519; 
+  opacity: 0.5;
+}
+
+.mint-processing {
+  display: flex;
+  margin-top: 40px;
+  margin-bottom: 35px;
+  color: #fff;
+  opacity: 0.7;
+  font-size: 18px;
+  line-height: 24px;
+  font-family: "Road Rage";
+  border: none;
+  pointer-events: none;
+  font-weight: 600;
+  background: none;
+  position: relative;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.mint-submitBtnL1 {
+  color: #54b420;
+  position: absolute;
+  pointer-events: none;
+  z-index: -1;
+  left: 0;
+  transition: 0.3s;
+}
+
+.mint-submitBtnL2 {
+  color: #54b420;
+  opacity: 0.4;
+  position: absolute;
+  pointer-events: none;
+  z-index: -2;
+}
+
+.mint-submitBtnL3 {
+  color: #54b420;
+  opacity: 0.1;
+  position: absolute;
+  pointer-events: none;
+  z-index: -3;
+}
+
+.mint-glowEffect {
+  pointer-events: none;
+  transition: 0.3s;
+  position: absolute;
+  width: 100px;
+  height: 50px;
+  z-index: -4;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.mint-beneficiaryContainer {
+  margin-top: 15px;
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+}
+
+.mint-console {
+  background-color: #000;
+  color: #54b420;
+  border: 1px solid #352200;
+  border-radius: 5px;
+  padding: 10px;
+  font-family: monospace;
+  font-size: 14px;
+  overflow-y: auto;
+  max-height: 250px; 
+  white-space: pre-wrap; 
+  opacity: 0.85;
+  height: 100px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.mint-console-line {
+  margin-bottom: 2px;
+}
+
+.mint-console-line.success {
+  color: #02d802;
+}
+
+.mint-console-line.error {
+  color: #d80202;
+}
+
+.mint-console-processing {
+  color: #54b420;
+  font-weight: bold;
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.mint-console-dots {
+  margin-left: 5px;
+  animation: mint-console-dots 1s steps(3, end) infinite;
+}
+
+.mint-console-line.info .processing-dots {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  border-radius: 50%;
+  background: #000;
+  animation: blink 1s infinite;
+}
+
+.mint-console-content {
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes mint-glow {
+  0% {
+    box-shadow: 0 0 0px 0px #54b420;
+  }
+
+  50% {
+    box-shadow: 0 0 50px 0px #54b420;
+  }
+
+  100% {
+    box-shadow: 0 0 0px 0px #54b420;
+  }
+}
+
+@keyframes mint-color {
+  0% {
+    color: #54b420;
+  }
+
+  50% {
+    color: #ffbb00;
+  }
+
+  100% {
+    color: #54b420;
+  }
+}
+
+@keyframes mint-toggleOnCheckbox {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -85%) scale(0) rotate(45deg);
+  }
+
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -85%) scale(0.9) rotate(45deg);
+  }
+
+  100% {
+    transform: translate(-50%, -85%) scale(0.8) rotate(45deg);
+  }
+}

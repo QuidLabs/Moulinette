@@ -1,0 +1,96 @@
+  .header-root {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0 0;
+  }
+
+  .header-logoContainer {
+    flex: 1 1 auto;
+  }
+
+  .header-logo {
+    display: block;
+    width: 140px;
+    height: 120px;
+    background-size: contain;
+    background-position: center;
+    background-image: url('../../icons/quid-logo-angel.png');
+    background-repeat: no-repeat;
+  }
+
+  .header-summary {
+    display: flex;
+    margin: 0 -10px;
+    flex: 1 1 auto;
+    justify-content: space-around;
+  }
+
+  .header-summaryEl {
+    margin: 0 10px;
+  }
+
+  .header-summaryElTitle {
+    line-height: 20px;
+    font-size: 14px;
+    color: #b57800;
+  }
+
+  .header-summaryElValue {
+    line-height: 42px;
+    font-size: 38px;
+    font-weight: bold;
+    margin-top: 2px;
+    //font-family: variables.$secondary-font;
+    color: #ffffff;
+  }
+
+  .header-walletContainer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+  }
+
+  .header-wallet {
+    display: flex;
+    background-color: transparent;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    border: none;
+    color: #fff;
+    line-height: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    position: relative;
+
+    &:hover>.header-walletBackground {
+      opacity: 0;
+    }
+  }
+
+  button.header-wallet {
+    cursor: pointer;
+  }
+
+  .header-metamaskIcon {
+    display: block;
+    font-size: 0;
+    line-height: 0;
+    user-select: none;
+    pointer-events: none;
+  }
+
+  .header-walletBackground {
+    display: block;
+    color: #54b420;
+    opacity: 0;
+    position: relative;
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+    transition: opacity 0.2s;
+    z-index: -1;
+  }
