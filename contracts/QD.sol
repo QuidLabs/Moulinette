@@ -17,7 +17,6 @@ contract Quid is ERC20,
     // pot to [Piscine]" ~ Lil Wayne
     Pot[44][16] Piscine; // 16 batches
     // 44th day stores batch's total...
-    
     event Medianizer(uint k, uint sum_w_k); // TODO test
     uint constant LAMBO = 16508; // TODO mainnet only
     uint constant public WAD = 1e18; 
@@ -56,6 +55,7 @@ contract Quid is ERC20,
         require(msg.sender == Moulinette, "42");
         _;
     } // en.wiktionary.org/wiki/MOulinette 
+    
     modifier postLaunch { // of the windmill
         require(currentBatch() > 0, "after");  
         _; 
@@ -63,15 +63,16 @@ contract Quid is ERC20,
     function fast_forward(bool year) external { // TODO remove, testing only
         blocktimestamp += (year) ? 360 days : 44 days; restart();
     } 
+    
     constructor(address _mo) ERC20("QU!D", "QD") {
         Moulinette = _mo; deployed = block.timestamp;
         blocktimestamp = deployed;
     }
-
+    
     function _min(uint _a, uint _b) internal 
         pure returns (uint) { return (_a < _b) ?
                                       _a : _b;
-    }
+    } 
     function _minAmount(address from, address token, 
         uint amount) internal view returns (uint) {
         amount = _min(amount, IERC20(token).balanceOf(from));
@@ -89,6 +90,7 @@ contract Quid is ERC20,
             (block_timestamp - START) / 1 days
         ) + 1; total_supply_cap = in_days * MAX_PER_DAY; 
     }
+
     function vote(uint new_vote) external postLaunch {
         uint batch = currentBatch();
         if (batch < 16 && !hasVoted[msg.sender][batch]) {
@@ -133,7 +135,6 @@ contract Quid is ERC20,
         MO(Moulinette).transferHelper(from, address(0), value); 
         // burn shouldn't affect carry.debit values of `from` or `to`
     }
-    
     function transfer(address to, uint value) 
         public override(ERC20) returns (bool) {
         _transferHelper(msg.sender, to, value); 
@@ -147,36 +148,28 @@ contract Quid is ERC20,
         MO(Moulinette).transferHelper(from, 
             to, value); return true;
     }
-
     
     function getPrice() 
         public view returns (uint price) {
         AggregatorV3Interface chainlink; 
-        
         // ETH-USD 24hr Realized Volatility
         // 0x31D04174D0e1643963b38d87f26b0675Bb7dC96e
-
         // ETH-USD 30-Day Realized Volatility
         // 0x8e604308BD61d975bc6aE7903747785Db7dE97e2
-
         // ETH-USD 7-Day Realized Volatility
         // 0xF3140662cE17fDee0A6675F9a511aDbc4f394003
-        
         chainlink = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
         (, int priceAnswer,, uint timeStamp,) = chainlink.latestRoundData();
-        
+        price = uint(priceAnswer);
         require(timeStamp > 0 
             && timeStamp <= block.timestamp 
             && priceAnswer >= 0, "price");
-        
         uint8 answerDigits = chainlink.decimals();
-        price = uint(priceAnswer);
         // Aggregator returns an 8-digit precision, 
         // but we handle the case of future changes
         if (answerDigits > 18) { price /= 10 ** (answerDigits - 18); }
         else if (answerDigits < 18) { price *= 10 ** (18 - answerDigits); } 
     }
- 
     function calc_avg_return() public view returns 
         (uint minted, uint avg_roi) { 
         uint batch = currentBatch(); 
@@ -292,7 +285,9 @@ contract Quid is ERC20,
             // would mess up supply_cap calculation
             uint supply_cap = in_days * MAX_PER_DAY; 
             require(total.credit + amount < supply_cap, "cap"); 
-            // "Yesterday's price is NOT today's price!" 
+            // Yesterday's price is NOT today's price,
+            // and when I think I'm running low, you're 
+            // all I need, I wanna feel that in a chit
             uint price = in_days * PENNY + START_PRICE;
             cost = _minAmount(pledge, token, // USDe
                 FullMath.mulDiv(price, amount, WAD)
@@ -354,6 +349,9 @@ contract Quid is ERC20,
             // MO(Moulinette).draw_stables(from, SALARY); // TODO uncomment
         } // TODO check off by one with batch
         return this.onERC721Received.selector; 
+        // "independent money, might cop me a Rari,
+        // to think this all started from thoughts 
+        // inside my noggin', but creativity easy"
     }
     function restart() public { // TODO remove, Sepolia only
         if (START != 0) {

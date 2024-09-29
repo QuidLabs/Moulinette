@@ -29,12 +29,9 @@ contract MO is Ownable {
     // address constant public WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     // address constant public USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48; 
     uint internal _ETH_PRICE; // TODO delete when finished testing
-    uint24 constant POOL_FEE = 500;  
-    uint internal FEE = WAD / 28;
-    uint128 constant Q96 = 2**96;
-    uint constant DIME = 10  * WAD;
-    uint constant public WAD = 1e18;
-    uint constant public MIN_CR = WAD + WAD / 10;
+    uint24 constant POOL_FEE = 500;  uint internal FEE = WAD / 28;
+    uint128 constant Q96 = 2**96; uint constant DIME = 10  * WAD;
+    uint constant public WAD = 1e18; 
     INonfungiblePositionManager NFPM;
     int24 internal LAST_TWAP_TICK;
     int24 internal UPPER_TICK; 
@@ -133,9 +130,8 @@ contract MO is Ownable {
     }
     function setFee(uint index) 
         public onlyQuid { FEE = 
-        WAD / (index + 11); 
-    }
-    //  Remember the 3rd Delphic maxim.
+        WAD / (index + 11); }
+    //  recall 3rd Delphic maxim
     mapping (address => Offer) pledges;
     function _min(uint _a, uint _b) 
         internal pure returns (uint) {
@@ -641,8 +637,7 @@ contract MO is Ownable {
                 TransferHelper.safeTransferFrom(WETH, 
                 _msgSender(), address(this), amount);
             } else { require(msg.value > 0, "no ETH");
-                amount += msg.value; // TODO deposit
-            }
+                 amount += msg.value; }
             if (msg.value > 0) { IWETH(WETH).deposit{
                                  value: msg.value}(); }   
             if (long) { pledge.work.debit += amount; } // collateral
