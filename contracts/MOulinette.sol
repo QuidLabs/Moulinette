@@ -80,7 +80,10 @@ contract MO is Ownable {
     event DepositDeductibleInDollars(uint deductible);
     event DepositDeductibleInETH(uint deductible);
     event DepositInsured(uint insured);
-    event DepositInDollars(uint in_dollars);   
+    event DepositInDollars(uint in_dollars); 
+
+    event SwapAmountsForLiquidity(uint amount0, uint amount1);
+
     function get_info(address who) view
         external returns (uint, uint) {
         Offer storage pledge = pledges[who];
@@ -111,7 +114,7 @@ contract MO is Ownable {
     // or refrain from doing something specific
     // in the future...our case is bilateral...
     // promise for a promise, aka quid pro quo ;)
-    struct Offer { Pod weth; Pod carry; Pod work; 
+    struct Offer { Pod weth; Pod carry; Pod work;
     uint last; } // timestamp of last fold() event
     // work is like a checking account (credit can
     // be drawn against it) while weth is savings,
@@ -293,8 +296,11 @@ contract MO is Ownable {
         int24 decrease = int24((int256(twap) * lower) / int256(WAD));
         adjustedIncrease = _adjustToNearestIncrement(increase);
         adjustedDecrease = _adjustToNearestIncrement(decrease);
+        if (adjustedIncrease == adjustedDecrease) { // edge case
+            adjustedIncrease += 10; 
+        } 
     }
-    function _getTWAP(bool immediate) internal view returns (int24) { // TODO check when[] order
+    function _getTWAP(bool immediate) internal view returns (int24) {
         uint32[] memory when = new uint32[](2); when[0] = immediate ? 60 : 177777; when[1] = 0; 
         try POOL.observe(when) returns (int56[] memory tickCumulatives, uint160[] memory) {
             int24 delta = int24(tickCumulatives[0] - tickCumulatives[1]);  
@@ -389,6 +395,7 @@ contract MO is Ownable {
                                                     state.sqrtPriceX96, 
                                                     state.sqrtPriceX96Lower, 
                                                     state.sqrtPriceX96Upper, Q96);
+        emit SwapAmountsForLiquidity(state.positionAmount0, state.positionAmount1);
         // how much of the position needs to
         // be converted to the other token:
         if (state.positionAmount0 == 0) { 
@@ -421,7 +428,7 @@ contract MO is Ownable {
                 amount0 = amount0 - state.delta0;
                 amount1 = amount1 + amount;
             } 
-            else {
+            else { // sell1
                 state.delta1 = FullMath.mulDiv(state.delta0, state.priceX96, Q96);
                 if (state.delta1 > 0) { // prevent possible rounding to 0 issue
                     TransferHelper.safeApprove(USDC, address(ROUTER), state.delta1);
@@ -658,7 +665,7 @@ contract MO is Ownable {
                     in_dollars, "insuring too much ether"
                 ); 
                 pledges[beneficiary] = pledge; // save changes
-            } // _repackNFT(amount, 0); // 0 represents USDC // TODO
+            } _repackNFT(amount, 0); // 0 represents USDC s
         } 
     }
     
@@ -790,50 +797,57 @@ contract MO is Ownable {
     // voltage regulators watch the currents and control the 
     // relay (which turns on & off the alternator, if below 
     // or above 14 volts, respectively, re-charging battery)... 
+    // https://www.geckoterminal.com/sepolia-testnet/pools/0x3289680dd4d6c10bb19b899729cda5eef58aeff1
     function _repackNFT(uint amount0, uint amount1) internal {
         uint128 liquidity; int24 twap = _getTWAP(false); 
-        emit RepackNFTtwap(twap);
+        emit RepackNFTtwap(twap); // TODO this is returning 14, strange tick
         emit RepackNFTamountsBefore(amount0, amount1);
-        if (LAST_TWAP_TICK != 0) { // not first _repack call
-            if (twap > UPPER_TICK || twap < LOWER_TICK) {
-                (,,,,,,, liquidity,,,,) = NFPM.positions(ID);
-                (uint collected0, 
-                 uint collected1) = _withdrawAndCollect(liquidity); 
-                amount0 += collected0; amount1 += collected1;
-                emit RepackNFTamountsAfterCollectInBurn(amount0, amount1);
-                pledges[address(this)].weth.debit += collected0;
-                pledges[address(this)].work.debit += collected1;
-                NFPM.burn(ID); // this ^^^^^^^^^^ is USDC fees
-            }
-        }
+        // if (LAST_TWAP_TICK != 0) { // not first _repack call
+        //     if (twap > UPPER_TICK || twap < LOWER_TICK) {
+        //         (,,,,,,, liquidity,,,,) = NFPM.positions(ID);
+        //         (uint collected0, 
+        //          uint collected1) = _withdrawAndCollect(liquidity); 
+        //         amount0 += collected0; amount1 += collected1;
+        //         emit RepackNFTamountsAfterCollectInBurn(amount0, amount1);
+        //         pledges[address(this)].weth.debit += collected0;
+        //         pledges[address(this)].work.debit += collected1;
+        //         NFPM.burn(ID); // this ^^^^^^^^^^ is USDC fees
+        //     }
+        // }
         LAST_TWAP_TICK = twap; if (liquidity > 0 || ID == 0) {
         (UPPER_TICK, LOWER_TICK) = _adjustTicks(LAST_TWAP_TICK);
+
         (amount0, amount1) = _swap(amount0, amount1);
+        
         emit RepackMintingNFT(
             UPPER_TICK, LOWER_TICK, amount0, amount1
-        );
+        ); // TODO 20,10,0,9627330 
+        // amount0 should not be 0, 
+        // maybe this is the reason for revert
+
+        // TODO why is this mint function call reverting ???
         INonfungiblePositionManager.MintParams memory params =
             INonfungiblePositionManager.MintParams({
                 token0: WETH, token1: USDC, fee: POOL_FEE,
                 tickLower: LOWER_TICK, tickUpper: UPPER_TICK,
                 amount0Desired: amount0, amount1Desired: amount1,
                 amount0Min: 0, amount1Min: 0, recipient: address(this),
-                deadline: block.timestamp }); (ID,,,) = NFPM.mint(params);
+                deadline: block.timestamp + 1 minutes }); (ID,,,) = NFPM.mint(params);
         } // else no need to repack NFT, but need to collect idle LP fees 
         else { // at this stage transactions, fees are protocol property
-            (uint collected0, uint collected1) = _collect(); 
-            amount0 += collected0; amount1 += collected1;
-            emit RepackNFTamountsAfterCollect(amount0, amount1);
-            pledges[address(this)].weth.debit += collected0;
-            pledges[address(this)].work.debit += collected1;
-            (amount0, 
-             amount1) = _swap(amount0, amount1);
-            emit RepackNFTamountsAfterSwap(amount0, amount1);
-            NFPM.increaseLiquidity(
-                INonfungiblePositionManager.IncreaseLiquidityParams(
-                    ID, amount0, amount1, 0, 0, block.timestamp
-                )
-            );
+            // (uint collected0, uint collected1) = _collect(); 
+            // amount0 += collected0; amount1 += collected1;
+            // emit RepackNFTamountsAfterCollect(amount0, amount1);
+            // pledges[address(this)].weth.debit += collected0;
+            // pledges[address(this)].work.debit += collected1;
+            // // (amount0, 
+            // //  amount1) = _swap(amount0, amount1);
+            // emit RepackNFTamountsAfterSwap(amount0, amount1);
+            // NFPM.increaseLiquidity(
+            //     INonfungiblePositionManager.IncreaseLiquidityParams(
+            //         ID, amount0, amount1, 0, 0, block.timestamp
+            //     )
+            // );
         }
     } function repackNFT() external { _repackNFT(0,0); }
 }
