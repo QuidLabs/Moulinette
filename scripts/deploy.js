@@ -100,6 +100,7 @@ async function main() {
     const MO = await getContract("MO", addresses.Moulinette);
     const QD = await getContract("Quid", addresses.Quid);
     const USDE = await getContract("mockToken", addresses.USDe)
+    const sUSDE = await getContract("mockVault", addresses.sUSDe)
     
     const provider = ethers.provider;
     const latestBlock = await provider.getBlockNumber();
@@ -157,8 +158,7 @@ async function main() {
 
     receipt = await USDE.allowance(beneficiary, addresses.Moulinette)
     console.log('allowance', receipt)
-    balance = await USDE.balanceOf(addresses.Moulinette)
-    console.log('USDe balance MO before', balance)
+    
     try {
       tx = await MO.deposit(beneficiary, bill, addresses.USDe, false)
       receipt = await tx.wait() 
@@ -168,8 +168,8 @@ async function main() {
     catch (error) {
       console.error("Error in transaction:", error)
     }
-    balance = await USDE.balanceOf(addresses.Moulinette)
-    console.log('USDe balance MO after', balance)
+    balance = await sUSDE.balanceOf(addresses.Moulinette)
+    console.log('sUSDe balance MO after', balance)
     // TODO approve MO to do transferFrom if doing WETH
   
     const amountInWei = ethers.parseEther("0.001");
