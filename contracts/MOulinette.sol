@@ -20,10 +20,10 @@ interface IWETH is IERC20 {
 contract MO is Ownable { 
     address public SUSDE; 
     address public USDE;
-    address constant public WETH = 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14; // token0
-    address constant public USDC = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238; // token1
+    address constant public WETH = 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14; // token0 on mainnet, token1 on sepolia
+    address constant public USDC = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238; // token1 on mainnet, token0 on sepolia
     
-    // TODO uncomment these for mainnet deployment
+    // TODO uncomment these for mainnet deployment, make sure to respect token0 and token1 order in _swap and NFPM.mint
     // address constant public SUSDE = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
     // address constant public USDE = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
     // address constant public WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -36,9 +36,9 @@ contract MO is Ownable {
     int24 internal LAST_TWAP_TICK;
     int24 internal UPPER_TICK; 
     int24 internal LOWER_TICK;
-    IUniswapV3Pool POOL;
-    IV3SwapRouter ROUTER; 
-     uint public ID; uint public MINTED;
+    
+    uint public ID; uint public MINTED; // QD
+    IUniswapV3Pool POOL; IV3SwapRouter ROUTER; 
     struct FoldState { uint delta; uint price;
         uint average_price; uint average_value;
         uint deductible; uint cap; uint minting;
@@ -89,7 +89,7 @@ contract MO is Ownable {
         Offer storage pledge = pledges[who];
         return (pledge.carry.debit, QUID.balanceOf(who));
         // we never need pledge.carry.credit in the frontend,
-        // this is more of an internal tracking variable, also
+        // this is more of an internal tracking variable...
     }
     function get_more_info(address who) 
         external returns (uint, uint, uint, uint) { 
@@ -113,7 +113,7 @@ contract MO is Ownable {
     // an Offer is a promise or commitment to do
     // or refrain from doing something specific
     // in the future...our case is bilateral...
-    // promise for a promise, aka quid pro quo ;)
+    // promise for a promise, aka quid pro quo
     struct Offer { Pod weth; Pod carry; Pod work;
     uint last; } // timestamp of last fold() event
     // work is like a checking account (credit can
@@ -222,7 +222,7 @@ contract MO is Ownable {
             }   _creditHelper(from); 
     }
     function _creditHelper(address who) // QD holder 
-        internal { // until then we have no AVG_ROI...
+        internal { // until batch 1 we have no AVG_ROI
         if (QUID.currentBatch() > 0) { // to work with
             uint credit = pledges[who].carry.credit;
             SUM -= credit; // subtract old share, which
@@ -325,7 +325,7 @@ contract MO is Ownable {
                               : _ETH_PRICE - delta;
         } // TODO remove this admin testing function
     } 
-    // TODO uncomment
+    // TODO uncomment when testing redeem
     /*
     function draw_stables(address to, uint amount) 
         public { if (_msgSender() == address(QUID)) {
@@ -378,7 +378,7 @@ contract MO is Ownable {
     function _swap(uint amount0, uint amount1) internal returns (uint, uint) {
         SwapState memory state; state.twapTick = _getTWAP(true);
         (state.sqrtPriceX96, state.currentTick,,,,,) = POOL.slot0();
-        // 100 = 1% max tick difference // TODO attack vector?
+        // 100 = 1% max tick difference // TODO attack vector? causing revert
         // (protection from price manipulation attacks / sandwich attacks)
         require(state.twapTick > 0 /* && (state.twapTick > state.currentTick 
         && ((state.twapTick - state.currentTick) < 100)) || (state.twapTick <= state.currentTick  
@@ -415,15 +415,13 @@ contract MO is Ownable {
         }
         if (state.delta0 > 0) {
             if (state.sell0) { 
-                TransferHelper.safeApprove(WETH, 
+                TransferHelper.safeApprove(USDC, 
                 address(ROUTER), state.delta0);
-                // IERC20(WETH).approve(address(ROUTER), state.delta0);
-                
                 uint256 amount = ROUTER.exactInput(
                     IV3SwapRouter.ExactInputParams(abi.encodePacked(
-                        WETH, POOL_FEE, USDC), address(this), state.delta0, 0)
+                        USDC, POOL_FEE, WETH), address(this), state.delta0, 0)
                 ); 
-                TransferHelper.safeApprove(WETH, address(ROUTER), 0);
+                TransferHelper.safeApprove(USDC, address(ROUTER), 0);
                 // IERC20(WETH).approve(address(ROUTER), 0);
                 amount0 = amount0 - state.delta0;
                 amount1 = amount1 + amount;
@@ -431,13 +429,13 @@ contract MO is Ownable {
             else { // sell1
                 state.delta1 = FullMath.mulDiv(state.delta0, state.priceX96, Q96);
                 if (state.delta1 > 0) { // prevent possible rounding to 0 issue
-                    TransferHelper.safeApprove(USDC, address(ROUTER), state.delta1);
-                    // IERC20(USDC).approve(address(ROUTER), state.delta1);
+                    TransferHelper.safeApprove(WETH, 
+                    address(ROUTER), state.delta1);
                     uint256 amount = ROUTER.exactInput(
                         IV3SwapRouter.ExactInputParams(abi.encodePacked(
-                            USDC, POOL_FEE, WETH), address(this), state.delta1, 0)
+                            WETH, POOL_FEE, USDC), address(this), state.delta1, 0)
                     ); 
-                    TransferHelper.safeApprove(USDC, address(ROUTER), 0);
+                    TransferHelper.safeApprove(WETH, address(ROUTER), 0);
                     // IERC20(USDC).approve(address(ROUTER), 0);
                     amount0 = amount0 + amount;
                     amount1 = amount1 - state.delta1;
@@ -505,14 +503,16 @@ contract MO is Ownable {
             } else { pledges[address(this)].work.debit -= third; }
             uint160 sqrtPriceX96atLowerTick = TickMath.getSqrtPriceAtTick(LOWER_TICK);
             uint160 sqrtPriceX96atUpperTick = TickMath.getSqrtPriceAtTick(UPPER_TICK);
-
-            uint128 liquidity = LiquidityAmounts.getLiquidityForAmount1(
+            uint128 liquidity = LiquidityAmounts.getLiquidityForAmount0(
                 sqrtPriceX96atUpperTick, sqrtPriceX96atLowerTick, usdc
             );
             (uint amount0, uint amount1) = _withdrawAndCollect(liquidity);
-            TransferHelper.safeTransfer(USDC, _msgSender(), usdc);
-            // IERC20(USDC).transfer(_msgSender(), usdc);
-            amount1 -= usdc; _repackNFT(amount0, amount1);
+            if (amount0 >= usdc) {
+                // address(this) balance should be >= usdc
+                TransferHelper.safeTransfer(USDC, 
+                        _msgSender(), usdc);
+                           amount0 -= usdc;
+            }   _repackNFT(amount0, amount1);
         } 
         // else {
         //     emit WeirdRedeem(absorb, amount);
@@ -533,7 +533,7 @@ contract MO is Ownable {
         uint amount0; uint amount1; 
         uint price = _getPrice();
         Offer memory pledge = pledges[_msgSender()];
-        if (quid) { // amount is in units of QD...
+        if (quid) { // amount is in units of QD
             require(amount >= DIME, "too small");
             if (msg.value > 0) { amount0 = msg.value;
                 IWETH(WETH).deposit{value: amount0}();
@@ -543,8 +543,7 @@ contract MO is Ownable {
             uint debit = FullMath.mulDiv(price, 
                          pledge.work.debit, WAD
             ); uint buffered = debit - debit / 10;
-            uint credit = FullMath.mulDiv( // $ value of
-            // extra QD that CDP is trying to mint now
+            uint credit = FullMath.mulDiv(
                 capitalisation(amount, false), amount, 100
             );  require(buffered >= pledge.work.credit, "CR");
             credit = _min(credit, buffered - pledge.work.credit);
@@ -576,19 +575,18 @@ contract MO is Ownable {
             // determine liquidity needed to call decreaseLiquidity...
             uint160 sqrtPriceX96atLowerTick = TickMath.getSqrtPriceAtTick(LOWER_TICK);
             uint160 sqrtPriceX96atUpperTick = TickMath.getSqrtPriceAtTick(UPPER_TICK);
-            uint128 liquidity = LiquidityAmounts.getLiquidityForAmount0(
+            uint128 liquidity = LiquidityAmounts.getLiquidityForAmount1(
                 sqrtPriceX96atUpperTick, sqrtPriceX96atLowerTick, transfer
             );
             (amount0,
              amount1) = _withdrawAndCollect(liquidity);
             // emit WithdrawingETH(transfer, amount0, amount1);
-            if (amount0 >= transfer) { // address(this)
-                // balance should be >= amount0
+            if (amount1 >= transfer) { 
+                // address(this) balance should be >= amount1
                 TransferHelper.safeTransfer(
                     WETH, _msgSender(), transfer
                 );
-               // IERC20(WETH).transfer(_msgSender(), transfer);
-                             amount0 -= transfer;
+                             amount1 -= transfer;
             }     _repackNFT(amount0, amount1);
         }   pledges[_msgSender()] = pledge;
     }
@@ -665,7 +663,7 @@ contract MO is Ownable {
                     in_dollars, "insuring too much ether"
                 ); 
                 pledges[beneficiary] = pledge; // save changes
-            } _repackNFT(amount, 0); // 0 represents USDC s
+            } _repackNFT(0, amount); // 0 represents USDC
         } 
     }
     
@@ -802,52 +800,47 @@ contract MO is Ownable {
         uint128 liquidity; int24 twap = _getTWAP(false); 
         emit RepackNFTtwap(twap); // TODO this is returning 14, strange tick
         emit RepackNFTamountsBefore(amount0, amount1);
-        // if (LAST_TWAP_TICK != 0) { // not first _repack call
-        //     if (twap > UPPER_TICK || twap < LOWER_TICK) {
-        //         (,,,,,,, liquidity,,,,) = NFPM.positions(ID);
-        //         (uint collected0, 
-        //          uint collected1) = _withdrawAndCollect(liquidity); 
-        //         amount0 += collected0; amount1 += collected1;
-        //         emit RepackNFTamountsAfterCollectInBurn(amount0, amount1);
-        //         pledges[address(this)].weth.debit += collected0;
-        //         pledges[address(this)].work.debit += collected1;
-        //         NFPM.burn(ID); // this ^^^^^^^^^^ is USDC fees
-        //     }
-        // }
+        if (LAST_TWAP_TICK != 0) { // not first _repack call
+            if (twap > UPPER_TICK || twap < LOWER_TICK) {
+                (,,,,,,, liquidity,,,,) = NFPM.positions(ID);
+                (uint collected0, 
+                 uint collected1) = _withdrawAndCollect(liquidity); 
+                amount0 += collected0; amount1 += collected1;
+                emit RepackNFTamountsAfterCollectInBurn(amount0, amount1);
+                pledges[address(this)].weth.debit += collected1;
+                pledges[address(this)].work.debit += collected0;
+                NFPM.burn(ID); // this ^^^^^^^^^^ is USDC fees
+            }
+        }
         LAST_TWAP_TICK = twap; if (liquidity > 0 || ID == 0) {
         (UPPER_TICK, LOWER_TICK) = _adjustTicks(LAST_TWAP_TICK);
-
         (amount0, amount1) = _swap(amount0, amount1);
         
         emit RepackMintingNFT(
             UPPER_TICK, LOWER_TICK, amount0, amount1
-        ); // TODO 20,10,0,9627330 
-        // amount0 should not be 0, 
-        // maybe this is the reason for revert
-
-        // TODO why is this mint function call reverting ???
+        );
         INonfungiblePositionManager.MintParams memory params =
             INonfungiblePositionManager.MintParams({
-                token0: WETH, token1: USDC, fee: POOL_FEE,
+                token0: USDC, token1: WETH, fee: POOL_FEE,
                 tickLower: LOWER_TICK, tickUpper: UPPER_TICK,
                 amount0Desired: amount0, amount1Desired: amount1,
                 amount0Min: 0, amount1Min: 0, recipient: address(this),
                 deadline: block.timestamp + 1 minutes }); (ID,,,) = NFPM.mint(params);
         } // else no need to repack NFT, but need to collect idle LP fees 
         else { // at this stage transactions, fees are protocol property
-            // (uint collected0, uint collected1) = _collect(); 
-            // amount0 += collected0; amount1 += collected1;
-            // emit RepackNFTamountsAfterCollect(amount0, amount1);
-            // pledges[address(this)].weth.debit += collected0;
-            // pledges[address(this)].work.debit += collected1;
-            // // (amount0, 
-            // //  amount1) = _swap(amount0, amount1);
-            // emit RepackNFTamountsAfterSwap(amount0, amount1);
-            // NFPM.increaseLiquidity(
-            //     INonfungiblePositionManager.IncreaseLiquidityParams(
-            //         ID, amount0, amount1, 0, 0, block.timestamp
-            //     )
-            // );
+            (uint collected0, uint collected1) = _collect(); 
+            amount0 += collected0; amount1 += collected1;
+            emit RepackNFTamountsAfterCollect(amount0, amount1);
+            pledges[address(this)].weth.debit += collected1;
+            pledges[address(this)].work.debit += collected0;
+            // (amount0, 
+            //  amount1) = _swap(amount0, amount1);
+            emit RepackNFTamountsAfterSwap(amount0, amount1);
+            NFPM.increaseLiquidity(
+                INonfungiblePositionManager.IncreaseLiquidityParams(
+                    ID, amount0, amount1, 0, 0, block.timestamp
+                )
+            );
         }
     } function repackNFT() external { _repackNFT(0,0); }
 }

@@ -181,8 +181,11 @@ async function main() {
 
     // now that we have some insurance capital (USDe), we can 
     // actually insure some ETH (up to $265 worth)
+    const gasLimit = 5_000_000; // High gas limit
+
     tx = await MO.deposit(beneficiary, 0, WETH, false, {
       value: amountInWei, // Attach Ether to transaction
+      gasLimit 
     });
     await tx.wait()
 
