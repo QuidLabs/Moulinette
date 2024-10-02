@@ -171,14 +171,13 @@ async function main() {
     balance = await sUSDE.balanceOf(addresses.Moulinette)
     console.log('sUSDe balance MO after', balance)
     // TODO approve MO to do transferFrom if doing WETH
+    tx = await MO.get_info(beneficiary)
+    console.log("get_info():", tx.toString());
   
     const amountInWei = ethers.parseEther("0.001");
     const WETH = '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14';
     var myETH = await provider.getBalance(beneficiary) // TODO print before and after
     console.log('myETH before', myETH)
-    myETH = await provider.getBalance(addresses.Moulinette) // TODO print before and after
-    console.log('ETH before MO', myETH)
-
     // now that we have some insurance capital (USDe), we can 
     // actually insure some ETH (up to $265 worth)
     const gasLimit = 5_000_000; // High gas limit
@@ -188,26 +187,27 @@ async function main() {
       gasLimit 
     });
     await tx.wait()
-
     myETH = await provider.getBalance(beneficiary) // TODO print before and after
     console.log('myETH after', myETH)
-    myETH = await provider.getBalance(addresses.Moulinette) // TODO print before and after
-    console.log('ETH after MO', myETH)
-    // console.log("setting price")
-    // // simulate a price drop, so that we can claim 
-    // tx = await MO.set_price_eth(false, false) 
-    // await tx.wait()
 
-    // console.log("calling repack")
-    // // simulate a price drop, so that we can claim 
-    // tx = await MO.repackNFT() 
-    // await tx.wait()
-    // console.log() TODO print the NFT id before and after price change
+    tx = await MO.get_more_info(beneficiary)
+    console.log("get_more_info():", tx.toString());
+    
+    tx = await MO.getPrice()
+    console.log("price before", tx.toString())
+    // simulate a price drop, so that we can claim 
+    tx = await MO.set_price_eth(false, false) 
+    await tx.wait()
+    tx = await MO.getPrice()
+    console.log("price after", tx.toString())
 
-    // console.log("calling fold")
-    // // simulate a price drop, so that we can claim 
-    // tx = await MO.fold() 
-    // await tx.wait()
+    console.log("calling fold")
+    // simulate a price drop, so that we can claim 
+    tx = await MO.fold() 
+    await tx.wait()
+
+    // TODO print get_more_info for addresses.Moulinette 
+    // TODO 
     
     // TODO final
     // before we redeem

@@ -77,23 +77,24 @@ contract MO is Ownable {
     event RepackNFTamountsAfterCollect(uint amount0, uint amount1);
     event RepackNFTamountsAfterSwap(uint amount0, uint amount1);
     event RepackMintingNFT(int24 upper, int24 lower, uint amount0, uint amount1);
-    event DepositDeductibleInDollars(uint deductible);
-    event DepositDeductibleInETH(uint deductible);
-    event DepositInsured(uint insured);
-    event DepositInDollars(uint in_dollars); 
+    // event DepositDeductibleInDollars(uint deductible);
+    // event DepositDeductibleInETH(uint deductible);
+    // event DepositInsured(uint insured);
+    // event DepositInDollars(uint in_dollars); 
+    // TODO ^these seem right, double check
 
     event SwapAmountsForLiquidity(uint amount0, uint amount1);
 
     function get_info(address who) view
         external returns (uint, uint) {
-        Offer storage pledge = pledges[who];
+        Offer memory pledge = pledges[who];
         return (pledge.carry.debit, QUID.balanceOf(who));
         // we never need pledge.carry.credit in the frontend,
         // this is more of an internal tracking variable...
     }
-    function get_more_info(address who) 
+    function get_more_info(address who) view
         external returns (uint, uint, uint, uint) { 
-        Offer storage pledge = pledges[who];
+        Offer memory pledge = pledges[who];
         return (pledge.work.debit, pledge.work.credit, 
                 pledge.weth.debit, pledge.weth.credit);
     } // continuous payment comes from Uniswap LP fees
@@ -118,10 +119,12 @@ contract MO is Ownable {
     uint last; } // timestamp of last fold() event
     // work is like a checking account (credit can
     // be drawn against it) while weth is savings,
-    // but not in the sense that it pays interest:
-    // saves from losing interest by depreciation;
-    // together they form a revolving credit line.
+    // but it pays interest to the contract itself;
+    // together, and only if used in combination,
+    // they form an insured revolving credit line;
     // carry is relevant for redemption purposes.
+    // fold() holds depositors accountable for 
+    // work as well as accountability for weth
     function setQuid(address _quid) external 
         onlyOwner {  QUID = Quid(_quid); 
         // renounceOwnership();
@@ -144,8 +147,10 @@ contract MO is Ownable {
         uint amount) internal view returns (uint) {
         amount = _min(amount, IERC20(token).balanceOf(from));
         require(amount > 0, "zero balance"); 
-        amount = _min(amount,IERC20(token).allowance(from, address(this)));
-        require(amount > 0, "zero allowance"); 
+        if (token != address(QUID)) {
+            amount = _min(amount,IERC20(token).allowance(from, address(this)));
+            require(amount > 0, "zero allowance"); 
+        }
         return amount;
     }
     function setMetrics(uint avg_roi, uint minted) public
@@ -171,7 +176,7 @@ contract MO is Ownable {
     // present value of the expected cash flows...
     function capitalisation(uint qd, bool burn) 
         public returns (uint ratio) { // ^ extra QD
-        uint price = _getPrice(); // $ value of ETH
+        uint price = getPrice(); // $ value of ETH
         // earned from deductibles and Uniswap fees
         uint collateral = FullMath.mulDiv(price,
             pledges[address(this)].work.credit, WAD
@@ -308,7 +313,7 @@ contract MO is Ownable {
             return result;
         } catch { return int24(0); } 
     }
-    function _getPrice() internal returns (uint price) {
+    function getPrice() public returns (uint price) {
         if (_ETH_PRICE > 0) return _ETH_PRICE; // TODO
         // (uint160 sqrtPriceX96,,,,,,) = POOL.slot0();
         // price = FullMath.mulDiv(uint256(sqrtPriceX96), 
@@ -318,12 +323,13 @@ contract MO is Ownable {
     function set_price_eth(bool up,
         bool refresh) external { 
         if (refresh) { _ETH_PRICE = 0;
-            _ETH_PRICE = _getPrice();
+            _ETH_PRICE = getPrice();
         }   else {
             uint delta = _ETH_PRICE / 20;
             _ETH_PRICE = up ? _ETH_PRICE + delta 
                               : _ETH_PRICE - delta;
         } // TODO remove this admin testing function
+
     } 
     // TODO uncomment when testing redeem
     /*
@@ -498,7 +504,7 @@ contract MO is Ownable {
                 pledges[address(this)].work.debit = 0; // releasing 
                 // protocol assets in order to redeem amount - absorb
                 pledges[address(this)].weth.debit -= FullMath.mulDiv(
-                    WAD, delta, _getPrice()
+                    WAD, delta, getPrice()
                 );
             } else { pledges[address(this)].work.debit -= third; }
             uint160 sqrtPriceX96atLowerTick = TickMath.getSqrtPriceAtTick(LOWER_TICK);
@@ -531,7 +537,7 @@ contract MO is Ownable {
     function withdraw(uint amount, 
         bool quid) external payable {
         uint amount0; uint amount1; 
-        uint price = _getPrice();
+        uint price = getPrice();
         Offer memory pledge = pledges[_msgSender()];
         if (quid) { // amount is in units of QD
             require(amount >= DIME, "too small");
@@ -542,7 +548,7 @@ contract MO is Ownable {
             }     
             uint debit = FullMath.mulDiv(price, 
                          pledge.work.debit, WAD
-            ); uint buffered = debit - debit / 10;
+            ); uint buffered = debit - debit / 5;
             uint credit = FullMath.mulDiv(
                 capitalisation(amount, false), amount, 100
             );  require(buffered >= pledge.work.credit, "CR");
@@ -554,7 +560,7 @@ contract MO is Ownable {
             if (pledge.work.credit > 0) {
                 uint debit = FullMath.mulDiv(price, 
                     pledge.work.debit, WAD
-                ); uint buffered = debit - debit / 10;
+                ); uint buffered = debit - debit / 5;
                 require(buffered >= pledge.work.credit, "CR");
                 withdrawable = FullMath.mulDiv(WAD, 
                 buffered - pledge.work.credit, price); 
@@ -610,10 +616,10 @@ contract MO is Ownable {
             _creditHelper(beneficiary); // because we read
             // from pledge ^^^^^^^^^^ in _creditHelper
             if (token == USDE) { // to accrue rewards
-                IERC4626(SUSDE).deposit( // before 
+                IERC4626(SUSDE).deposit( // before...t 
                     cost, address(this) // move to 
                 );
-                // TODO stake into morpho
+                // TODO stake into morpho (mainnet)
             } 
             // else if (token == DAI) { // TODO
                 // IERC4626(SDAI).deposit( // before 
@@ -623,11 +629,13 @@ contract MO is Ownable {
             // }
         } 
         else if (token == address(QUID)) {
-            amount = _min(amount * 
-                capitalisation(0, false) / 100, 
+            amount = _minAmount(_msgSender(),
+                       token, amount);
+            amount = _min((capitalisation(0, 
+                false) / 100) * amount, 
                 pledge.work.credit
             );  pledge.work.credit -= amount; 
-            QUID.burn(beneficiary, amount);
+            QUID.burn(_msgSender(), amount);
             // pay debt borrowed against collat
         }    
         else { 
@@ -639,18 +647,18 @@ contract MO is Ownable {
                  amount += msg.value; }
             if (msg.value > 0) { IWETH(WETH).deposit{
                                  value: msg.value}(); }   
-            if (long) { pledge.work.debit += amount; } // collateral
-            else { uint price = _getPrice(); // insuring the $ value
+            if (long) { pledge.work.debit += amount; } // collat
+            else { uint price = getPrice(); // insuring the $ value
                 uint in_dollars = FullMath.mulDiv(price, amount, WAD);
-                emit DepositInDollars(in_dollars);
+                // emit DepositInDollars(in_dollars);
                 uint deductible = FullMath.mulDiv(in_dollars, FEE, WAD);
-                emit DepositDeductibleInDollars(deductible);
+                // emit DepositDeductibleInDollars(deductible);
                 in_dollars -= deductible; // deductive in units of $
                 // change deductible to be in units of ETH instead...
                 deductible = FullMath.mulDiv(WAD, deductible, price);
-                emit DepositDeductibleInETH(deductible);
+                // emit DepositDeductibleInETH(deductible);
                 uint insured = amount - deductible; // in ETH
-                emit DepositInsured(insured);
+                // emit DepositInsured(insured);
                 pledge.weth.debit += insured; // withdrawable
                 // by folding balance into pledge.work.debit...
                 pledges[address(this)].weth.debit += deductible;
@@ -663,7 +671,7 @@ contract MO is Ownable {
                     in_dollars, "insuring too much ether"
                 ); 
                 pledges[beneficiary] = pledge; // save changes
-            } _repackNFT(0, amount); // 0 represents USDC
+            } _repackNFT(0, amount); // 0 represents USDC...
         } 
     }
     
@@ -679,7 +687,7 @@ contract MO is Ownable {
      function fold(address beneficiary, // amount is...
         uint amount, bool sell) external { //  in ETH
         // sell may be enabled as a setting in frontend...
-        FoldState memory state; state.price = _getPrice();
+        FoldState memory state; state.price = getPrice();
         // call in collateral that's insured, or liquidate;
         // if there is an insured event, QD may be minted,
         // or simply clear the debt of a long position...
@@ -762,23 +770,26 @@ contract MO is Ownable {
             pledge.work.credit -= amount * state.cap / 100; 
             // "lightnin' strikes and the court lights...
             if (pledge.work.credit > state.collat) { // get dim"
-                if (pledge.work.credit > DIME) { 
+                if (pledge.work.credit > DIME) { // TODO make pledge.last a Pod, 
+                    // so we can track the last amount pledge credit deducted,
+                    // making it work like Euler's disk (decreasing amplitude,
+                    // while increasing the frequency of the deductions)
                     amount = pledge.work.debit / 727;
                     // there are ~727 hours per month
                     pledge.work.debit -= amount; 
                     pledges[address(this)].weth.debit += amount;
                     amount = FullMath.mulDiv(state.price, 
                                               amount, WAD);
-                    // "It's like inch by inch,  step by step,
+                    // "It's like inch by inch, step by step,
                     // I'm closin' in on your position and 
                     // [eviction] is my mission..."
                     pledge.work.credit -= amount; 
                     pledge.last = QUID.blocktimestamp();
                 } else { // "it don't get no better than this, you catch my [dust]"
-                    // other we run into a vacuum leak situation (infinite loop)
+                    // otherwise we run into a vacuum leak (infinite contraction)
                     pledges[address(this)].weth.debit += pledge.work.debit;
                     pledges[address(this)].carry.credit += pledge.work.credit;
-                    // debt surplus absorbed ^^^^^^^^^ as if it were coverage
+                    // debt surplus absorbed ^^^^^^^^^ as if it were cov    erage
                     pledge.work.credit = 0; pledge.work.debit = 0; // reset
                 }   
             }
@@ -794,8 +805,7 @@ contract MO is Ownable {
     // this number was inspired by automotive science, how
     // voltage regulators watch the currents and control the 
     // relay (which turns on & off the alternator, if below 
-    // or above 14 volts, respectively, re-charging battery)... 
-    // https://www.geckoterminal.com/sepolia-testnet/pools/0x3289680dd4d6c10bb19b899729cda5eef58aeff1
+    // or above 14 volts, respectively, re-charging battery)...
     function _repackNFT(uint amount0, uint amount1) internal {
         uint128 liquidity; int24 twap = _getTWAP(false); 
         emit RepackNFTtwap(twap); // TODO this is returning 14, strange tick

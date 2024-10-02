@@ -14,7 +14,7 @@ contract Quid is ERC20,
     IERC721Receiver {  
     // "Walked in the 
     // kitchen, found a 
-    // pot to [Piscine]" ~ Lil Wayne
+    // pot to [Piscine]" ~ tune chi...
     Pot[44][16] Piscine; // 16 batches
     // 44th day stores batch's total...
     event Medianizer(uint k, uint sum_w_k); // TODO test
@@ -341,7 +341,7 @@ contract Quid is ERC20,
             START = blocktimestamp; // "same level...
             // same rebel that never settled..." ~ Logic
             consideration[winner][batch] += BACKEND; // QD
-            // TODO four lottery winners, make sure no repeats
+            // TODO 4 lottery winners, make sure no repeats
             // in the frontend, we do transferFrom in order
             // to receive NFT & pass in calldata for lotto
             ICollection(F8N).transferFrom(address(this), 
