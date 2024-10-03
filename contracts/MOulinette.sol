@@ -802,10 +802,10 @@ contract MO is Ownable {
     // repackNFT() is relatively costly in terms of gas, we 
     // want to call it rarely...so as a rule of thumb, the  
     // range is roughly 14% total, 7% below and above TWAP;
-    // this number was inspired by automotive science, how
+    // this number was inspired by automotive science: how
     // voltage regulators watch the currents and control the 
     // relay (which turns on & off the alternator, if below 
-    // or above 14 volts, respectively, re-charging battery)...
+    // or above 14 volts, respectively, re-charging battery)
     function _repackNFT(uint amount0, uint amount1) internal {
         uint128 liquidity; int24 twap = _getTWAP(false); 
         emit RepackNFTtwap(twap); // TODO this is returning 14, strange tick
