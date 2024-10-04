@@ -175,18 +175,18 @@ async function main() {
     tx = await MO.get_info(beneficiary)
     console.log("get_info():", tx.toString());
   
-    const amountInWei = ethers.parseEther("0.001");
+    const amountInWei = ethers.parseEther("0.01");
     const WETH = '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14';
     var myETH = await provider.getBalance(beneficiary) 
     var before = new BN(myETH.toString())
     console.log('myETH before deposit', before.toString())
     // now that we have some insurance capital (USDe), we can 
     // actually insure some ETH (up to $265 worth)
-    const gasLimit = 5_000_000; // High gas limit
+    //const gasLimit = 5_000_000; // High gas limit
 
     tx = await MO.deposit(beneficiary, 0, WETH, false, {
-      value: amountInWei, // Attach Ether to transaction
-      gasLimit 
+      value: amountInWei // Attach Ether to transaction
+      //gasLimit 
     });
     await tx.wait()
     tx = await MO.get_more_info(addresses.Moulinette)

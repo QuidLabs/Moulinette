@@ -764,11 +764,12 @@ contract MO is Ownable {
                 pledges[address(this)].weth.credit -= amount;
                 // amount is no longer insured by the protocol
                 pledge.weth.debit -= amount; // deduct amount
+                pledge.weth.credit -= state.average_value; 
+                
                 pledge.work.debit += amount - state.deductible;
                 // this can effectively be zero if sell is true...
                 pledges[address(this)].weth.debit += state.deductible; // ETH
-                pledge.weth.credit -= _min(state.collat, pledge.weth.credit);
-                // wrapping with _min protects above call against underflow...
+                
                 state.collat = FullMath.mulDiv(pledge.work.debit, state.price, WAD);
                 if (state.collat > pledge.work.credit) { state.liquidate = false; }
             } 
