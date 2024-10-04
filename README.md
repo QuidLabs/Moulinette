@@ -48,7 +48,7 @@ may `redeem` 1 QD for $1.
 
 Voting is incentivised by a  
 small QD lotto, distributed  
-16x `onERC721Received`    
+16x `onERC721Received`.  
 As a simplified metaphor,  
 it's an investment **vehicle**:
 
@@ -72,5 +72,5 @@ note how [70/30](https://www.instagram.com/p/DAgKU2dxtUq/) here  corresponds
 to the initial capitalisation of QD...  
 Earth's surface is also 70% liquid.
 
-  ### Dev instructions
-  `SHOULD_DEPLOY=true npx hardhat run --network sepolia scripts/deploy.js`
+### Dev instructions
+`SHOULD_DEPLOY=true npx hardhat run --network sepolia scripts/deploy.js`

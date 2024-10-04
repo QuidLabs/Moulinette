@@ -3,6 +3,7 @@ const { ethers } = require("hardhat");
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
+const BN = require('bn.js');
 
 // Path to save the contract addresses
 const addressesFilePath = path.join(__dirname, 'deployedAddresses.json'); 
@@ -123,7 +124,7 @@ async function main() {
     // };
     // // Query logs based on the filter
     // const logsQD = await provider.getLogs(filter);
-    // // Process each log
+    // // TODO test medianiser
     // logsQD.forEach((log) => {
     //     try {
     //         // Decode the log using the contract's interface
@@ -176,8 +177,9 @@ async function main() {
   
     const amountInWei = ethers.parseEther("0.001");
     const WETH = '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14';
-    var myETH = await provider.getBalance(beneficiary) // TODO print before and after
-    console.log('myETH before', myETH)
+    var myETH = await provider.getBalance(beneficiary) 
+    var before = new BN(myETH.toString())
+    console.log('myETH before deposit', before.toString())
     // now that we have some insurance capital (USDe), we can 
     // actually insure some ETH (up to $265 worth)
     const gasLimit = 5_000_000; // High gas limit
@@ -187,27 +189,37 @@ async function main() {
       gasLimit 
     });
     await tx.wait()
+    tx = await MO.get_more_info(addresses.Moulinette)
+    console.log("get_more_info() of MO:", tx.toString());
+    
     myETH = await provider.getBalance(beneficiary) // TODO print before and after
-    console.log('myETH after', myETH)
+    console.log('myETH after deposit', myETH)
+    myETH =  new BN(myETH.toString())
+    var difference = before.sub(myETH)
+    console.log('difference', difference.toString())
 
     tx = await MO.get_more_info(beneficiary)
     console.log("get_more_info():", tx.toString());
-    
-    tx = await MO.getPrice()
-    console.log("price before", tx.toString())
+   
     // simulate a price drop, so that we can claim 
     tx = await MO.set_price_eth(false, false) 
     await tx.wait()
-    tx = await MO.getPrice()
-    console.log("price after", tx.toString())
 
     console.log("calling fold")
     // simulate a price drop, so that we can claim 
-    tx = await MO.fold() 
+    tx = await MO.fold(beneficiary, amountInWei, false) 
     await tx.wait()
 
-    // TODO print get_more_info for addresses.Moulinette 
-    // TODO 
+    tx = await MO.get_more_info(beneficiary)
+    console.log("get_more_info() of beneficiary:", tx.toString());
+
+    tx = await MO.get_more_info(addresses.Moulinette)
+    console.log("get_more_info() of MO:", tx.toString());
+
+    // TODO try fold with sell
+
+    // TODO try fold liquidation
+    // fastForward, try again
     
     // TODO final
     // before we redeem
