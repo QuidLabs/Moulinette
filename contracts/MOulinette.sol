@@ -742,9 +742,9 @@ contract MO is Ownable {
                     ); 
                 }
                 else { state.deductible = amount;  
-                    state.minting = state.average_value - 
+                    state.minting = state.collat - 
                         FullMath.mulDiv( // deducted
-                            state.average_value, FEE, WAD
+                            state.collat, FEE, WAD
                         );
                 }
                 if (state.repay > 0) { // capitalise into credit
@@ -765,7 +765,7 @@ contract MO is Ownable {
                 // amount is no longer insured by the protocol
                 pledge.weth.debit -= amount; // deduct amount
                 pledge.weth.credit -= state.average_value; 
-                
+
                 pledge.work.debit += amount - state.deductible;
                 // this can effectively be zero if sell is true...
                 pledges[address(this)].weth.debit += state.deductible; // ETH
