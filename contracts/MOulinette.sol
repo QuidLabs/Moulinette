@@ -497,7 +497,7 @@ contract MO is Ownable {
         max = amount;
         // convert amount from QD to value in dollars
         amount = amount * capitalisation(amount, true) / 100;
-        if (amount > max) {
+        if (amount > max) { // we preserve over-capitalisation
             amount = max;
         }
         // should almost always
@@ -536,11 +536,13 @@ contract MO is Ownable {
                 TransferHelper.safeTransfer(WETH, 
                         _msgSender(), usdc);
                            amount1 -= amount;
+                           // emit RedeemUSDC(uint usdc);
             }
             if (amount0 >= usdc) { 
                 TransferHelper.safeTransfer(USDC, 
                         _msgSender(), usdc);
                            amount0 -= usdc;
+                           // emit RedeemUSDC(uint usdc);
                 
             }   _repackNFT(amount0, amount1); 
         } 
@@ -641,7 +643,7 @@ contract MO is Ownable {
             _creditHelper(beneficiary); // because we read
             // from pledge ^^^^^^^^^^ in _creditHelper
             if (token == USDE) { // to accrue rewards
-                IERC4626(SUSDE).deposit( // before...t 
+                IERC4626(SUSDE).deposit( // before...
                     cost, address(this) // move to 
                 );
                 // TODO stake into morpho (mainnet)
@@ -654,16 +656,15 @@ contract MO is Ownable {
             // }
         } 
         else if (token == address(QUID)) {
-            amount = _minAmount(_msgSender(),
-                       token, amount);
-            amount = _min((capitalisation(0, 
-                false) / 100) * amount, 
+            amount = _minAmount(_msgSender(), 
+                        token, amount);
+            uint cap = capitalisation(amount, false);
+            amount = _min( (cap * amount) / 100, 
                 pledge.work.credit
             );  pledge.work.credit -= amount; 
-            QUID.burn(_msgSender(), amount);
-            // pay debt borrowed against collat
-        }    
-        else { 
+            QUID.burn(_msgSender(),
+            (cap * amount) / 100);
+        } else { 
             if (amount > 0) { amount = _minAmount(
                 _msgSender(), WETH, amount); 
                 TransferHelper.safeTransferFrom(WETH, 
@@ -697,7 +698,7 @@ contract MO is Ownable {
                     in_dollars, "insuring too much ether"
                 ); 
                 pledges[beneficiary] = pledge; // save changes
-            } _repackNFT(0, amount); // 0 represents USDC...
+            }   _repackNFT(0, amount); // 0 represents USDC...
         } 
     }
     
@@ -711,7 +712,7 @@ contract MO is Ownable {
     // to the cold and damp...know when to hold 'em...know 
     // when to..." 
      function fold(address beneficiary, // amount is...
-        uint amount, bool sell) external { //  in ETH
+        uint amount, bool sell) external { // in ETH
         // sell may be enabled as a setting in frontend...
         FoldState memory state; state.price = _getPrice();
         // call in collateral that's insured, or liquidate;
@@ -803,11 +804,12 @@ contract MO is Ownable {
                 if (pledge.work.credit > DIME) { // TODO make pledge.last a Pod, 
                     // so we can track the last amount pledge credit deducted,
                     // making it work like Euler's disk (decreasing amplitude,
-                    // while increasing the frequency of the deductions)
-                    amount = pledge.work.debit / 727;
-                    // there are ~727 hours per month
-                    pledge.work.debit -= amount; 
+                    // while increasing the frequency of the deductions)...
+                    amount = pledge.work.debit / 727; // TODO pledge last 
+                    // credit remaining should get smaller with each hour
+                    // exponential decay over ~727 hours per month
                     pledges[address(this)].weth.debit += amount;
+                    pledge.work.debit -= amount; 
                     amount = FullMath.mulDiv(state.price, 
                                               amount, WAD);
                     // "It's like inch by inch, step by step,
@@ -819,7 +821,7 @@ contract MO is Ownable {
                     // otherwise we run into a vacuum leak (infinite contraction)
                     pledges[address(this)].weth.debit += pledge.work.debit;
                     pledges[address(this)].carry.credit += pledge.work.credit;
-                    // debt surplus absorbed ^^^^^^^^^ as if it were cov    erage
+                    // debt surplus absorbed ^^^^^^^^^ as if it were coverage
                     pledge.work.credit = 0; pledge.work.debit = 0; // reset
                 }   
             }
@@ -860,21 +862,19 @@ contract MO is Ownable {
         //     UPPER_TICK, LOWER_TICK, amount0, amount1
         // );
         INonfungiblePositionManager.MintParams memory params =
-            INonfungiblePositionManager.MintParams({
-                token0: USDC, token1: WETH, fee: POOL_FEE,
-                tickLower: LOWER_TICK, tickUpper: UPPER_TICK,
-                amount0Desired: amount0, amount1Desired: amount1,
-                amount0Min: 0, amount1Min: 0, recipient: address(this),
-                deadline: block.timestamp + 1 minutes }); (ID,,,) = NFPM.mint(params);
-        } // else no need to repack NFT, but need to collect idle LP fees 
-        else { // at this stage transactions, fees are protocol property
-            (uint collected0, uint collected1) = _collect(); 
+            INonfungiblePositionManager.MintParams({token0: USDC, 
+                token1: WETH, fee: POOL_FEE, tickLower: LOWER_TICK, 
+                tickUpper: UPPER_TICK, amount0Desired: amount0, 
+                amount1Desired: amount1, amount0Min: 0, amount1Min: 0, 
+                recipient: address(this), deadline: block.timestamp + 
+                1 minutes}); (ID,,,) = NFPM.mint(params); // V3 NFT
+        } // else no need to repack NFT, need to collect LP fees... 
+        else { (uint collected0, uint collected1) = _collect(); 
             amount0 += collected0; amount1 += collected1;
             // emit RepackNFTamountsAfterCollect(amount0, amount1);
             pledges[address(this)].weth.debit += collected1;
             pledges[address(this)].work.debit += collected0;
-            // (amount0, 
-            //  amount1) = _swap(amount0, amount1);
+            (amount0, amount1) = _swap(amount0, amount1);
             // emit RepackNFTamountsAfterSwap(amount0, amount1);
             NFPM.increaseLiquidity(
                 INonfungiblePositionManager.IncreaseLiquidityParams(
