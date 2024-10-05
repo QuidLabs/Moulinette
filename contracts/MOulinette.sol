@@ -146,6 +146,10 @@ contract MO is Ownable {
         WAD / (index + 11); }
     //  recall 3rd Delphic maxim
     mapping (address => Offer) pledges;
+    function _max(uint128 _a, uint128 _b) 
+        internal pure returns (uint128) {
+        return (_a > _b) ? _a : _b;
+    }
     function _min(uint _a, uint _b) 
         internal pure returns (uint) {
         return (_a < _b) ? _a : _b;
@@ -470,7 +474,7 @@ contract MO is Ownable {
     // enough for countin' when dealin's done."
     function redeem(uint amount) 
         external returns (uint absorb) {
-        uint max = QUID.balanceOf(_msgSender());
+        uint max = _min(amount, QUID.balanceOf(_msgSender()));
         amount = _min(max, QUID.matureBalanceOf(_msgSender())); 
         uint share = FullMath.mulDiv(WAD, amount, max); // %
         // of overall balance, but not more than mature QD:
@@ -490,9 +494,12 @@ contract MO is Ownable {
         // emit AbsorbInRedeem(absorb);
         QUID.burn(_msgSender(), amount); 
 
+        max = amount;
         // convert amount from QD to value in dollars
         amount = amount * capitalisation(amount, true) / 100;
-
+        if (amount > max) {
+            amount = max;
+        }
         // should almost always
         // evaluate to true...
         if (amount > absorb) {
@@ -508,32 +515,41 @@ contract MO is Ownable {
             // convert 1/3 of amount into USDC precision...
             uint usdc = FullMath.mulDiv(1000000, third, WAD);
             // emit USDCinRedeem(usdc);
-            if (third > pledges[address(this)].work.debit) {
-                uint delta = third - pledges[address(this)].work.debit;
-                pledges[address(this)].work.debit = 0; // releasing 
-                // protocol assets in order to redeem amount - absorb
-                pledges[address(this)].weth.debit -= FullMath.mulDiv(
-                    WAD, delta, _getPrice()
-                );
-            } else { pledges[address(this)].work.debit -= third; }
+            bool sell_eth = third > pledges[address(this)].work.debit;
+            if (sell_eth) { amount = FullMath.mulDiv(WAD,
+                                (third - usdc), _getPrice());
+                usdc = pledges[address(this)].work.debit;    
+                pledges[address(this)].work.debit = 0;
+                pledges[address(this)].weth.debit -= amount;
+            } else { pledges[address(this)].work.debit -= third; amount = 0;}
             uint160 sqrtPriceX96atLowerTick = TickMath.getSqrtPriceAtTick(LOWER_TICK);
             uint160 sqrtPriceX96atUpperTick = TickMath.getSqrtPriceAtTick(UPPER_TICK);
-            uint128 liquidity = LiquidityAmounts.getLiquidityForAmount0(
+            uint128 liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
                 sqrtPriceX96atUpperTick, sqrtPriceX96atLowerTick, usdc
             );
+            uint128 liquidity1 = LiquidityAmounts.getLiquidityForAmount1(
+                sqrtPriceX96atUpperTick, sqrtPriceX96atLowerTick, amount
+            );
+            uint128 liquidity = _max(liquidity0, liquidity1);
             (uint amount0, uint amount1) = _withdrawAndCollect(liquidity);
-            if (amount0 >= usdc) {
-                // address(this) balance should be >= usdc
+            if (amount1 >= amount) { 
+                TransferHelper.safeTransfer(WETH, 
+                        _msgSender(), usdc);
+                           amount1 -= amount;
+            }
+            if (amount0 >= usdc) { 
                 TransferHelper.safeTransfer(USDC, 
                         _msgSender(), usdc);
                            amount0 -= usdc;
-            }   _repackNFT(amount0, amount1);
+                
+            }   _repackNFT(amount0, amount1); 
         } 
         // else {
         //     emit WeirdRedeem(absorb, amount);
         // }
         // else the entire amount being redeemed
         // is consumed by absorbing protocol debt
+        require(pledges[address(this)].carry.credit > absorb, "?");
         pledges[address(this)].carry.credit -= absorb;
         // regardless, we have to subtract the ^^^^^^
     }
@@ -552,8 +568,8 @@ contract MO is Ownable {
             require(amount >= DIME, "too small");
             if (msg.value > 0) { amount0 = msg.value;
                 IWETH(WETH).deposit{value: amount0}();
-                pledge.work.debit += amount0;
-                pledges[address(this)].work.credit += amount0;
+                pledges[address(this)].work.credit += 
+                amount0; pledge.work.debit += amount0;
             }     
             uint debit = FullMath.mulDiv(price, 
                          pledge.work.debit, WAD
@@ -570,7 +586,7 @@ contract MO is Ownable {
                 uint debit = FullMath.mulDiv(price, 
                     pledge.work.debit, WAD
                 ); uint buffered = debit - debit / 5;
-                require(buffered >= pledge.work.credit, "CR");
+                require(buffered >= pledge.work.credit, "CR!");
                 withdrawable = FullMath.mulDiv(WAD, 
                 buffered - pledge.work.credit, price); 
             }
@@ -655,16 +671,17 @@ contract MO is Ownable {
             } else { require(msg.value > 0, "no ETH");
                  amount += msg.value; }
             if (msg.value > 0) { IWETH(WETH).deposit{
-                                 value: msg.value}(); }   
-            if (long) { pledge.work.debit += amount; } // collat
-            else { uint price = _getPrice(); // insuring the $ value
+                                 value: msg.value}(); 
+            }       if (long) { pledge.work.debit += amount; }
+            else { uint price = _getPrice(); // insuring the $ value...
                 uint in_dollars = FullMath.mulDiv(price, amount, WAD);
-                // emit DepositInDollars(in_dollars);
                 uint deductible = FullMath.mulDiv(in_dollars, FEE, WAD);
-                // emit DepositDeductibleInDollars(deductible);
-                in_dollars -= deductible; // deductive in units of $
-                // change deductible to be in units of ETH instead...
+                // emit DepositInDollars(in_dollars); // yofee is beauty
+                in_dollars -= deductible; // emit means truth in hebrew
+                // emit DepositDeductibleInDollars(deductible); 
+                // change deductible to be in units of ETH instead
                 deductible = FullMath.mulDiv(WAD, deductible, price);
+                
                 // emit DepositDeductibleInETH(deductible);
                 uint insured = amount - deductible; // in ETH
                 // emit DepositInsured(insured);

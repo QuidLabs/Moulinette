@@ -205,9 +205,15 @@ async function main() {
     tx = await MO.set_price_eth(false, false) 
     await tx.wait()
 
+    // console.log("calling fold")
+    // // simulate a price drop, so that we can claim 
+    // tx = await MO.fold(beneficiary, amountInWei, false) 
+    // await tx.wait() // this seems to work!
+
+    // try fold with sell
     console.log("calling fold")
     // simulate a price drop, so that we can claim 
-    tx = await MO.fold(beneficiary, amountInWei, false) 
+    tx = await MO.fold(beneficiary, amountInWei, true) 
     await tx.wait()
 
     tx = await MO.get_more_info(beneficiary)
@@ -215,8 +221,6 @@ async function main() {
 
     tx = await MO.get_more_info(addresses.Moulinette)
     console.log("get_more_info() of MO:", tx.toString());
-
-    // TODO try fold with sell
 
     // TODO try fold liquidation
     // fastForward, try again
