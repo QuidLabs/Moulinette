@@ -209,7 +209,7 @@ async function main() {
     // // simulate a price drop, so that we can claim 
     // tx = await MO.fold(beneficiary, amountInWei, false) 
     // await tx.wait() // this seems to work!
-
+ 
     // try fold with sell
     console.log("calling fold")
     // simulate a price drop, so that we can claim 

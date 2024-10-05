@@ -682,7 +682,6 @@ contract MO is Ownable {
                 // emit DepositDeductibleInDollars(deductible); 
                 // change deductible to be in units of ETH instead
                 deductible = FullMath.mulDiv(WAD, deductible, price);
-                
                 // emit DepositDeductibleInETH(deductible);
                 uint insured = amount - deductible; // in ETH
                 // emit DepositInsured(insured);
