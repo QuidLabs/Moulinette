@@ -71,15 +71,14 @@ async function deployContracts() {
     console.log("set price");    
     tx = await mo.set_price_eth(false, true) 
     console.log("START");
+    await tx.wait()
     
     tx = await qd.restart()
-    
     return addresses;
 }
 
 async function main() { 
   try {
-    const currentTimestampInSeconds = Math.round(Date.now() / 1000);
     const shouldDeploy = process.env.SHOULD_DEPLOY !== 'false';
     
     var addresses;
@@ -107,7 +106,7 @@ async function main() {
     const latestBlock = await provider.getBlockNumber();
     console.log('latest block', latestBlock)
     
-    const fromBlock = latestBlock - 30;
+    const fromBlock = latestBlock - 1000;
     const toBlock = latestBlock;
     // Create a filter to get all logs emitted
     var filter = { address: addresses.Moulinette, 
@@ -152,9 +151,10 @@ async function main() {
       receipt = await tx.wait()
       balance = await USDE.balanceOf(beneficiary)
       console.log('balance', balance)
-    }
+   }
+    
     console.log('approving')
-    tx = await USDE.approve(addresses.Moulinette, rack)
+    tx = await USDE.approve(addresses.Moulinette, bill)
     await tx.wait()
 
     receipt = await USDE.allowance(beneficiary, addresses.Moulinette)
@@ -200,6 +200,9 @@ async function main() {
 
     tx = await MO.get_more_info(beneficiary)
     console.log("get_more_info():", tx.toString());
+
+    var cap = await MO.capitalisation(0, false)
+    console.log('capitalisation...', cap.toString())
    
     // simulate a price drop, so that we can claim 
     tx = await MO.set_price_eth(false, false) 
@@ -222,12 +225,18 @@ async function main() {
     tx = await MO.get_more_info(addresses.Moulinette)
     console.log("get_more_info() of MO:", tx.toString());
 
+    balance = await QD.balanceOf(beneficiary)
+    console.log('balance QD...', balance)
+
     // TODO try fold liquidation
-    // fastForward, try again
+    // fastForward, restart(), try deposit again
+    // withdraw() some debt, set_price(), fold()
     
     // TODO final
-    // before we redeem
-    // we must do a fastForward
+    // before we redeem, add another user,
+    // add their coverage burden, and liquidation
+    // we must do, finally, a fastForward by a year
+    // then call redeem and see expected balances 
     logsMO.forEach((log) => {
         try {
             // Decode the log using the contract's interface

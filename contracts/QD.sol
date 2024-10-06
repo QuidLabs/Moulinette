@@ -14,8 +14,8 @@ contract Quid is ERC20,
     IERC721Receiver {  
     // "Walked in the 
     // kitchen, found a 
-    // pot to [Piscine]" ~ tune chi...
-    Pot[44][16] Piscine; // 16 batches
+    // Pod to [Piscine]" ~ tune chi...
+    Pod[44][16] Piscine; // 16 batches
     // 44th day stores batch's total...
     event Medianizer(uint k, uint sum_w_k); // TODO test
     uint constant LAMBO = 16508; // TODO mainnet only
@@ -23,13 +23,13 @@ contract Quid is ERC20,
     uint constant PENNY = WAD / 100;
     uint constant DIME = 10 * WAD;
     uint constant public DAYS = 43 days;
-    // ends on the 44th day, 2d to refund
     uint public START_PRICE = 50 * PENNY;
-    // ends "keep it 8 more than 92 ^^^^"
-    uint public START; struct Pot { 
+    uint public START; struct Pod { 
         uint credit; uint debit; 
     } uint public blocktimestamp; // TODO remove (for Sepolia)
     uint constant SALARY = 134420 * WAD; // in USDe
+    // 400 grievances a min (100 uah / ^)...2080 work
+    // hours a year,______ one 16th of the total mint
     uint constant BACKEND = 444477 * WAD; // in QD...
     mapping(address => uint[16]) public consideration;
     // of legally sufficient value, bargained-for in 
@@ -47,7 +47,7 @@ contract Quid is ERC20,
     // index 0 is the largest possible vote = 9%
     // index 89 represents the smallest one = 1%
     uint public deployed; uint internal K = 17;
-    uint public SUM; // sum(weights[0..k]):
+    uint public SUM; // sum(weights[0...k]):
     mapping (address => uint) public feeVotes;
     address[][16] public voters; // by batch
     address public Moulinette; // QD windmill
@@ -177,7 +177,7 @@ contract Quid is ERC20,
         for (uint x = 0; x <= batch; x++) {
             uint so_far = 0; // total++
             for (uint y = 0; y < DAYS; y++) { // TODO check off by one
-                Pot memory day = Piscine[x][y]; 
+                Pod memory day = Piscine[x][y]; 
                 avg_roi += FullMath.mulDiv(WAD, 
                 day.credit - day.debit, day.debit);  
                 so_far += day.credit;
@@ -279,8 +279,8 @@ contract Quid is ERC20,
             // because START stops getting reset in 
             // onERC721Received when batch is 17...
             require(amount >= DIME, "mint more QD");
-            Pot memory total = Piscine[batch][43];
-            Pot memory day = Piscine[batch][in_days]; 
+            Pod memory total = Piscine[batch][43];
+            Pod memory day = Piscine[batch][in_days]; 
             in_days += 1; // without +1 can be 0...
             // would mess up supply_cap calculation
             uint supply_cap = in_days * MAX_PER_DAY; 
