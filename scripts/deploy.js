@@ -30,57 +30,60 @@ function saveAddresses(addresses) {
 }
 
 async function deployContracts() {
-    console.log('deploy mocks');
-    let mockToken = await ethers.getContractFactory("mockToken");
-    let mockVault = await ethers.getContractFactory("mockVault");
-    
-    const mockUSDe = await mockToken.deploy();
-    const USDeToken = await mockUSDe.getAddress()
-    console.log('USDe deployed at', USDeToken)
+    try {
+      console.log('deploy mocks');
+      let mockToken = await ethers.getContractFactory("mockToken");
+      let mockVault = await ethers.getContractFactory("mockVault");
+      
+      const mockUSDe = await mockToken.deploy();
+      const USDeToken = await mockUSDe.getAddress()
+      console.log('USDe deployed at', USDeToken)
 
-    const mockSUSDe = await mockVault.deploy(USDeToken);
-    const sUSDeToken = await mockSUSDe.getAddress()
-    console.log('sUSDe deployed at', sUSDeToken)
+      const mockSUSDe = await mockVault.deploy(USDeToken);
+      const sUSDeToken = await mockSUSDe.getAddress()
+      console.log('sUSDe deployed at', sUSDeToken)
 
-    console.log('deploying MO');
-    const MO = await ethers.getContractFactory("MO")
+      console.log('deploying MO');
+      const MO = await ethers.getContractFactory("MO")
 
-    const mo = await MO.deploy(USDeToken, sUSDeToken)
-    const MOaddress = await mo.getAddress()
-    console.log("MO deployed at", MOaddress)
+      const mo = await MO.deploy(USDeToken, sUSDeToken)
+      const MOaddress = await mo.getAddress()
+      console.log("MO deployed at", MOaddress)
 
-    const QD = await ethers.getContractFactory("Quid")
-    const qd = await QD.deploy(MOaddress)
-    
-    const QDaddress = await qd.getAddress()
-    console.log("QD deployed at", QDaddress)
-    
-    // Save addresses to the file
-    const addresses = {
-      USDe: USDeToken,
-      sUSDe: sUSDeToken,
-      Moulinette: MOaddress,
-      Quid: QDaddress
-    };
-    saveAddresses(addresses);
-    console.log("setQuid");
-    
-    var tx = await mo.setQuid(QDaddress)
-    await tx.wait()
-    
-    console.log("set price");    
-    tx = await mo.set_price_eth(false, true) 
-    console.log("START");
-    await tx.wait()
-    
-    tx = await qd.restart()
-    return addresses;
+      const QD = await ethers.getContractFactory("Quid")
+      const qd = await QD.deploy(MOaddress)
+      
+      const QDaddress = await qd.getAddress()
+      console.log("QD deployed at", QDaddress)
+      
+      // Save addresses to the file
+      const addresses = {
+        USDe: USDeToken,
+        sUSDe: sUSDeToken,
+        Moulinette: MOaddress,
+        Quid: QDaddress
+      };
+      saveAddresses(addresses);
+      console.log("setQuid");
+      
+      var tx = await mo.setQuid(QDaddress)
+      await tx.wait()
+      
+      console.log("set price");    
+      tx = await mo.set_price_eth(false, true) 
+      console.log("START");
+      await tx.wait()
+      
+      tx = await qd.restart()
+      return addresses;
+    }
+    catch (error) {
+      console.error("Error deployment:", error);
+    } 
 }
 
-async function main() { 
-  try {
+async function main() { // run some tests on our contracts 
     const shouldDeploy = process.env.SHOULD_DEPLOY !== 'false';
-    
     var addresses;
     if (!shouldDeploy) {
       console.log("not deploying")
@@ -96,7 +99,8 @@ async function main() {
     const signers = await ethers.getSigners();
     // Get the signer's address (public key)
     const beneficiary = await signers[0].getAddress();
-    // run some tests on our contracts 
+    const secondary = await signers[1].getAddress();
+    
     const MO = await getContract("MO", addresses.Moulinette);
     const QD = await getContract("Quid", addresses.Quid);
     const USDE = await getContract("mockToken", addresses.USDe)
@@ -151,7 +155,7 @@ async function main() {
       receipt = await tx.wait()
       balance = await USDE.balanceOf(beneficiary)
       console.log('balance', balance)
-   }
+    }
     
     console.log('approving')
     tx = await USDE.approve(addresses.Moulinette, bill)
@@ -208,16 +212,15 @@ async function main() {
     tx = await MO.set_price_eth(false, false) 
     await tx.wait()
 
-    // console.log("calling fold")
+    console.log("calling fold")
     // // simulate a price drop, so that we can claim 
     // tx = await MO.fold(beneficiary, amountInWei, false) 
     // await tx.wait() // this seems to work!
  
     // try fold with sell
-    console.log("calling fold")
-    // simulate a price drop, so that we can claim 
-    tx = await MO.fold(beneficiary, amountInWei, true) 
-    await tx.wait()
+    // // simulate a price drop, so that we can claim 
+    // tx = await MO.fold(beneficiary, amountInWei, true) 
+    // await tx.wait() // this seems to work!
 
     tx = await MO.get_more_info(beneficiary)
     console.log("get_more_info() of beneficiary:", tx.toString());
@@ -254,9 +257,6 @@ async function main() {
         console.log(`Transaction Hash: ${log.transactionHash}`);
         console.log('----------------------------------------');
     });
-  } catch (error) {
-     console.error('Error in deployment:', error);
-  }
 }  
 
 // We recommend this pattern to be able to 

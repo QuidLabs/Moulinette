@@ -24,13 +24,13 @@ contract Quid is ERC20,
     uint constant DIME = 10 * WAD;
     uint constant public DAYS = 43 days;
     uint public START_PRICE = 50 * PENNY;
-    uint public START; struct Pod { 
+    uint public START;
+    struct Pod { 
         uint credit; uint debit; 
-    } uint public blocktimestamp; // TODO remove (for Sepolia)
+    } 
+    uint public blocktimestamp; // TODO remove (Sepolia)
     uint constant SALARY = 134420 * WAD; // in USDe
-    // 400 grievances a min (100 uah / ^)...2080 work
-    // hours a year,______ one 16th of the total mint
-    uint constant BACKEND = 444477 * WAD; // in QD...
+    uint constant BACKEND = 444477 * WAD; // x 16 (QD)
     mapping(address => uint[16]) public consideration;
     // of legally sufficient value, bargained-for in 
     // an exchange agreement, for the breach of which 
@@ -55,13 +55,16 @@ contract Quid is ERC20,
         require(msg.sender == Moulinette, "42");
         _;
     } // en.wiktionary.org/wiki/MOulinette 
-    
     modifier postLaunch { // of the windmill
         require(currentBatch() > 0, "after");  
         _; 
     }
-    function fast_forward(bool year) external { // TODO remove, testing only
-        blocktimestamp += (year) ? 360 days : 44 days; restart();
+    function fast_forward(uint period) external { // TODO remove, testing only
+        if (period == 0) {
+            blocktimestamp += 360 days;
+        } else {
+            blocktimestamp += 1 days * period;
+        }   restart();
     } 
     
     constructor(address _mo) ERC20("QU!D", "QD") {
@@ -81,7 +84,7 @@ contract Quid is ERC20,
 
     function qd_amt_to_dollar_amt(uint qd_amt,  // used in frontend
         uint block_timestamp) public view returns (uint amount) {
-        uint in_days = ((block_timestamp - START) / 1 days) + 1; 
+        uint in_days = ((block_timestamp - START) / 1 days); 
         amount = (in_days * PENNY + START_PRICE) * qd_amt / WAD;
     }
     function get_total_supply_cap(uint block_timestamp) 
@@ -281,9 +284,7 @@ contract Quid is ERC20,
             require(amount >= DIME, "mint more QD");
             Pod memory total = Piscine[batch][43];
             Pod memory day = Piscine[batch][in_days]; 
-            in_days += 1; // without +1 can be 0...
-            // would mess up supply_cap calculation
-            uint supply_cap = in_days * MAX_PER_DAY; 
+            uint supply_cap = (in_days + 1) * MAX_PER_DAY; 
             require(total.credit + amount < supply_cap, "cap"); 
             // Yesterday's price is NOT today's price,
             // and when I think I'm running low, you're 
@@ -299,7 +300,7 @@ contract Quid is ERC20,
             _mint(pledge, amount); // totalSupply++
             day.credit += amount; day.debit += cost;
             total.credit += amount; total.debit += cost;
-            Piscine[batch][in_days - 1] = day;
+            Piscine[batch][in_days] = day;
             Piscine[batch][43] = total;  
         }
     }

@@ -41,10 +41,16 @@ if (process.env.RUN_COVERAGE == '1') {
   }
 }
 
-const privateKey: string | undefined = process.env.PRIVATE_KEY_DEV;
-  if (!privateKey) {
+const privateKey1: string | undefined = process.env.PRIVATE_KEY_1;
+  if (!privateKey1) {
     throw new Error("Please set your PRIVATE_KEY in a .env file");
   }
+
+const privateKey2: string | undefined = process.env.PRIVATE_KEY_2;
+  if (!privateKey2) {
+    throw new Error("Please set your PRIVATE_KEY in a .env file");
+  }
+
 
 const infuraApiKey: string | undefined = process.env.INFURA_API_KEY;
   if (!infuraApiKey) {
@@ -65,23 +71,23 @@ const config: HardhatUserConfig = {
     sepolia: {
       url: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
       chainId: 11155111,
-      accounts: [privateKey]
+      accounts: [privateKey1, privateKey2]
     },
     mainnet: {
       url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
       chainId: 1,
-      accounts: [privateKey]
+      accounts: [privateKey1]
     },
     arbitrumTestnet: {
       url: `https://arbitrum-sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
       chainId: 421614,
-      accounts: [privateKey]
+      accounts: [privateKey1]
 
     },
     arbitrum: {
       url: `https://arbitrum-mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
       chainId: 42161,
-      accounts: [privateKey]
+      accounts: [privateKey1]
     },
 
   },
