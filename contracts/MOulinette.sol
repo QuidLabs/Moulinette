@@ -583,7 +583,7 @@ contract MO is Ownable {
             // limited by 24kb bytecode)
             // would automatically pull 
             // from pledge.weth.debit...
-            // alas, deposior must first
+            // alas, depositor must first
             // call fold(), if need be,
             // prior to doing withdraw()
         } else { uint withdrawable; // ETH
