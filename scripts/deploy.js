@@ -212,10 +212,9 @@ async function main() { // run some tests on our contracts
     // TODO transfer QD from one to the other and 
     // observe how the transferHelper and creditHelper
     // will respond
-
-
     
     const amountInWei = ethers.parseEther("0.01");
+    const largeAmountInWei = ethers.parseEther("0.1");
     const WETH = '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14';
     var myETH = await provider.getBalance(beneficiary) 
     var before = new BN(myETH.toString())
@@ -248,8 +247,15 @@ async function main() { // run some tests on our contracts
 
     var cap = await MO.capitalisation(0, false)
     console.log('capitalisation...', cap.toString())
-
-    tx = await MOWithBeneficiary.withdraw()
+    
+    try {
+      tx = await MOWithBeneficiary.withdraw(bill, true, {
+        value: largeAmountInWei
+      })
+      await tx.wait()
+    } catch (error) {
+      console.error("Error in withdraw:", error)
+    }
    
     // simulate a price drop, so that we can claim 
     tx = await MO.set_price_eth(false, false) 
@@ -263,18 +269,7 @@ async function main() { // run some tests on our contracts
     // try fold with sell
     // // simulate a price drop, so that we can claim 
     // tx = await MO.fold(beneficiary, amountInWei, true) 
-    // await tx.wait() // this seems to work!
-
-    // TODO try fold liquidation
-    
-    // withdraw() some debt, set_price(), fold()
-
-    try {
-
-    } catch (error) {
-      console.error("Error in withdraw:", error)
-    }
-    
+    // await tx.wait() // this seems to work    
 
     tx = await MO.get_more_info(beneficiary)
     console.log("get_more_info() of beneficiary:", tx.toString());
