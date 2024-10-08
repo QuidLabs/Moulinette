@@ -29,7 +29,8 @@ contract MO is Ownable {
     // address constant public WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     // address constant public USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48; 
     uint internal _ETH_PRICE; // TODO delete when finished testing
-    uint24 constant POOL_FEE = 500;  uint internal FEE = WAD / 28;
+    uint24 constant POOL_FEE = 500;
+    uint internal FEE = WAD / 28;
     uint128 constant Q96 = 2**96; uint constant DIME = 10  * WAD;
     uint constant public WAD = 1e18; 
     INonfungiblePositionManager NFPM;
@@ -578,6 +579,13 @@ contract MO is Ownable {
             amount = (100 + (100 - capitalisation(0, false))) * credit / 100;
             QUID.mint(amount, _msgSender(), address(QUID));
             pledge.work.credit += credit;
+            // if we had more space (not 
+            // limited by 24kb bytecode)
+            // would automatically pull 
+            // from pledge.weth.debit...
+            // alas, deposior must first
+            // call fold(), if need be,
+            // prior to doing withdraw()
         } else { uint withdrawable; // ETH
             if (pledge.work.credit > 0) {
                 uint debit = FullMath.mulDiv(price, 
@@ -586,8 +594,7 @@ contract MO is Ownable {
                 require(buffered >= pledge.work.credit, "CR!");
                 withdrawable = FullMath.mulDiv(WAD, 
                 buffered - pledge.work.credit, price); 
-            }
-            uint transfer = amount;
+            }   uint transfer = amount;
             if (transfer > withdrawable) {
                 withdrawable = FullMath.mulDiv(
                     WAD, pledge.work.credit, price 

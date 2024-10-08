@@ -14,10 +14,11 @@ contract Quid is ERC20,
     IERC721Receiver {  
     // "Walked in the 
     // kitchen, found a 
-    // Pod to [Piscine]" ~ tune chi...
+    // [Pod] to [Piscine]" ~ tune chi
     Pod[44][16] Piscine; // 16 batches
     // 44th day stores batch's total...
     event Medianizer(uint k, uint sum_w_k); // TODO test
+    event TransferHelper(uint );
     uint constant LAMBO = 16508; // TODO mainnet only
     uint constant public WAD = 1e18; 
     uint constant PENNY = WAD / 100;
@@ -29,7 +30,7 @@ contract Quid is ERC20,
         uint credit; uint debit; 
     } 
     uint public blocktimestamp; // TODO remove (Sepolia)
-    uint constant SALARY = 134420 * WAD; // in USDe
+    uint constant GRIEVANCES = 134420 * WAD; // in USDe
     uint constant BACKEND = 444477 * WAD; // x 16 (QD)
     mapping(address => uint[16]) public consideration;
     // of legally sufficient value, bargained-for in 
@@ -59,12 +60,12 @@ contract Quid is ERC20,
         require(currentBatch() > 0, "after");  
         _; 
     }
-    function fast_forward(uint period) external { // TODO remove, testing only
-        if (period == 0) {
-            blocktimestamp += 360 days;
-        } else {
-            blocktimestamp += 1 days * period;
-        }   restart();
+    function fast_forward(uint period) external { 
+        // TODO remove...only for testing on Sepolia
+        if (period == 0) { blocktimestamp += 360 days; } 
+        else {  blocktimestamp += 1 days * period;
+            if (period >= 43 days) { restart(); }
+        }   
     } 
     
     constructor(address _mo) ERC20("QU!D", "QD") {
@@ -235,8 +236,6 @@ contract Quid is ERC20,
         require(amount > WAD, "insufficient QD"); 
         int i; // must be int otherwise tx reverts
         // when we go below 0 in the while loop...
-        
-        // TODO emit events
         if (to == address(0)) {
             i = int(matureBatches()); 
             _burn(msg.sender, amount);
@@ -252,6 +251,7 @@ contract Quid is ERC20,
         while (amount > 0 && i >= 0) {
             uint k = uint(i);    
             uint amt = consideration[msg.sender][k];
+            emit TransferHelper(amt);
             if (amt > 0) {  
                 consideration[msg.sender][k] -= amt;
                 // `to` may be address(0) but it's 
@@ -347,7 +347,7 @@ contract Quid is ERC20,
             // to receive NFT & pass in calldata for lotto
             ICollection(F8N).transferFrom(address(this), 
                 from, LAMBO); _mint(winner, BACKEND); 
-            // MO(Moulinette).draw_stables(from, SALARY); // TODO uncomment
+            // MO(Moulinette).draw_stables(from, GRIEVANCES); 
         } // TODO check off by one with batch
         return this.onERC721Received.selector; 
     }

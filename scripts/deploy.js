@@ -102,8 +102,17 @@ async function main() { // run some tests on our contracts
     const secondary = await signers[1].getAddress();
     
     const MO = await getContract("MO", addresses.Moulinette);
+    const MOWithBeneficiary = MO.connect(beneficiary);
+    const MOWithSecondary = MO.connect(secondary);
+    
     const QD = await getContract("Quid", addresses.Quid);
+    const QDwithBeneficiary = QD.connect(beneficiary);
+    const QDwithSecondary = QD.connect(secondary);
+    
     const USDE = await getContract("mockToken", addresses.USDe)
+    const USDEwithBeneficiary = USDE.connect(beneficiary);
+    const USDEwithSecondary = USDE.connect(secondary);
+
     const sUSDE = await getContract("mockVault", addresses.sUSDe)
     
     const provider = ethers.provider;
@@ -151,34 +160,61 @@ async function main() { // run some tests on our contracts
     const rack = '1000000000000000000000'
     if (shouldDeploy) {
       console.log('minting 1k USDE to', beneficiary)
-      tx = await USDE.mint()
+      tx = await USDEwithBeneficiary.mint()
       receipt = await tx.wait()
+      tx = await USDEwithSecondary.mint()
+      receipt = await tx.wait()
+
       balance = await USDE.balanceOf(beneficiary)
-      console.log('balance', balance)
+      console.log('balance beneficiary', balance)
+
+      balance = await USDE.balanceOf(secondary)
+      console.log('balance beneficiary', balance)
     }
     
     console.log('approving')
-    tx = await USDE.approve(addresses.Moulinette, bill)
+    tx = await USDEwithBeneficiary.approve(addresses.Moulinette, bill)
+    await tx.wait()
+
+    tx = await USDEwithSecondary.approve(addresses.Moulinette, bill)
     await tx.wait()
 
     receipt = await USDE.allowance(beneficiary, addresses.Moulinette)
     console.log('allowance', receipt)
+    receipt = await USDE.allowance(secondary, addresses.Moulinette)
+    console.log('allowance', receipt)
     
     try {
-      tx = await MO.deposit(beneficiary, bill, addresses.USDe, false)
+      tx = await MOWithBeneficiary.deposit(beneficiary, bill, addresses.USDe, false)
       receipt = await tx.wait() 
+      
+      // fastForward a bit, try deposit again
+      tx = await MOWithSecondary.deposit(secondary, bill, addresses.USDe, false)
+      receipt = await tx.wait() 
+
       balance = await QD.balanceOf(beneficiary)
-      console.log('balance', balance)
+      console.log('balance of beneficiary', balance)
+      balance = await QD.balanceOf(secondary)
+      console.log('balance of secondary', balance)
     }
     catch (error) {
-      console.error("Error in transaction:", error)
+      console.error("Error in USDe deposit:", error)
     }
     balance = await sUSDE.balanceOf(addresses.Moulinette)
     console.log('sUSDe balance MO after', balance)
     // TODO approve MO to do transferFrom if doing WETH
     tx = await MO.get_info(beneficiary)
-    console.log("get_info():", tx.toString());
-  
+    console.log("get_info(beneficiary):", tx.toString());
+
+    tx = await MO.get_info(secondary)
+    console.log("get_info(secondary):", tx.toString());
+
+    // TODO transfer QD from one to the other and 
+    // observe how the transferHelper and creditHelper
+    // will respond
+
+
+    
     const amountInWei = ethers.parseEther("0.01");
     const WETH = '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14';
     var myETH = await provider.getBalance(beneficiary) 
@@ -188,11 +224,16 @@ async function main() { // run some tests on our contracts
     // actually insure some ETH (up to $265 worth)
     //const gasLimit = 5_000_000; // High gas limit
 
-    tx = await MO.deposit(beneficiary, 0, WETH, false, {
-      value: amountInWei // Attach Ether to transaction
-      //gasLimit 
-    });
-    await tx.wait()
+    try {
+      tx = await MO.deposit(beneficiary, 0, WETH, false, {
+        value: amountInWei // Attach Ether to transaction
+        //gasLimit 
+      });
+      await tx.wait()
+    } catch (error) {
+        console.error("Error in ETH deposit:", error)
+    }
+    
     tx = await MO.get_more_info(addresses.Moulinette)
     console.log("get_more_info() of MO:", tx.toString());
     
@@ -207,6 +248,8 @@ async function main() { // run some tests on our contracts
 
     var cap = await MO.capitalisation(0, false)
     console.log('capitalisation...', cap.toString())
+
+    tx = await MOWithBeneficiary.withdraw()
    
     // simulate a price drop, so that we can claim 
     tx = await MO.set_price_eth(false, false) 
@@ -222,6 +265,17 @@ async function main() { // run some tests on our contracts
     // tx = await MO.fold(beneficiary, amountInWei, true) 
     // await tx.wait() // this seems to work!
 
+    // TODO try fold liquidation
+    
+    // withdraw() some debt, set_price(), fold()
+
+    try {
+
+    } catch (error) {
+      console.error("Error in withdraw:", error)
+    }
+    
+
     tx = await MO.get_more_info(beneficiary)
     console.log("get_more_info() of beneficiary:", tx.toString());
 
@@ -231,10 +285,6 @@ async function main() { // run some tests on our contracts
     balance = await QD.balanceOf(beneficiary)
     console.log('balance QD...', balance)
 
-    // TODO try fold liquidation
-    // fastForward, restart(), try deposit again
-    // withdraw() some debt, set_price(), fold()
-    
     // TODO final
     // before we redeem, add another user,
     // add their coverage burden, and liquidation
