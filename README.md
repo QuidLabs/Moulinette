@@ -1,4 +1,4 @@
-## in my opinion... 
+## in my ~~opinion~~ [offer]()
 
 Hedging can be achieved  
 by selling futures...QD is  
@@ -11,13 +11,13 @@ USDe over a duration of
 to `mint`: 8 per year times  
 [43 days](https://bit.ly/3q4tShS), "yesterday's price  
 
-is *not* today's," 46% avg ROI,  
-not accounting for liabilities...  
+is *not* today's," 46% avg ROI  
+(before accounting liabilities);  
 the receivables are collateral  
 for future cash flow from ETH  
 getting deployed into UniV3,  
 
-fees retained to capitalise QD,  
+fees retained to capitalise QD...  
 as well as sUSDe yield (Morpho  
 boosted), **gradated** liquidations  
 from longs, and deductibles of
@@ -49,8 +49,19 @@ may `redeem` 1 QD for $1.
 Voting is incentivised by a  
 small QD lotto, distributed  
 16x `onERC721Received`.  
-As a simplified metaphor,  
-it's an investment **vehicle**:
+
+There will be a vetting  
+process for selecting   
+a pool of eligible lotto  
+recipients...they must   
+all show proof of work  
+on our Ricardian talent    
+and prediction market.  
+
+### Technical scope (iMO)
+
+As a simplified metaphor, QuiD  
+powers an investment **vehicle**:
 
 - electric ignition system (nervous system):  
   `deposit` ETH if nervous about its price,  
@@ -72,5 +83,7 @@ note how [70/30](https://www.instagram.com/p/DAgKU2dxtUq/) here  corresponds
 to the initial capitalisation of QD...  
 Earth's surface is also 70% liquid.
 
-### Dev instructions
-`SHOULD_DEPLOY=true npx hardhat run --network sepolia scripts/deploy.js`
+### Launch instructions
+`npm install` from the root directory, followed by:  
+`SHOULD_DEPLOY=true npx hardhat run --network sepolia scripts/deploy.js`  
+`cd ./frontend && npm install && npm run dev`

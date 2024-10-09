@@ -17,7 +17,10 @@ interface IWETH is IERC20 {
     function deposit() 
     external payable;
 }   import "./QD.sol";
-contract MO is Ownable { 
+contract MO is Ownable {
+// essentially 4626, but we
+// save on contract size by
+// not inheriting interface
     address public SUSDE; 
     address public USDE;
     address constant public WETH = 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14; // token0 on mainnet, token1 on sepolia
@@ -60,10 +63,12 @@ contract MO is Ownable {
         bool sell0;
     }   Quid QUID;
     // TODO test...
-    // event CreditHelperShare(uint share); 
-    // event CreditHelperROI(uint roi);
+    event CreditHelperShare(uint share); 
+    event CreditHelperROI(uint roi);
+    event CreditHelper(uint credit);
     // event DebitTransferHelper(uint debit);
     // event WithdrawingETH(uint amount, uint amount0, uint ammount1);
+    
     // TODO test redeem after all others 
     // event USDCinRedeem(uint usdc);
     // event QuidUSDCinRedeemBefore(uint usdc);
@@ -71,18 +76,19 @@ contract MO is Ownable {
     // event WeirdRedeem(uint absorb, uint amount);
     // event ThirdInRedeem(uint third);
     // event AbsorbInRedeem(uint absorb);
+    
     event Fold(uint price, uint value, uint cover);
     event FoldDelta(uint delta);
     event FoldMinted(uint minted);
-    // event SwapAmountsForLiquidity(uint amount0, uint amount1);
 
-    // TODO remove events (for testing only...)
+    // event SwapAmountsForLiquidity(uint amount0, uint amount1);
     // event RepackNFTamountsAfterCollectInBurn(uint amount0, uint amount1);
     // event RepackNFTtwap(int24 twap);
     // event RepackNFTamountsBefore(uint amount0, uint amount1);
     // event RepackNFTamountsAfterCollect(uint amount0, uint amount1);
     // event RepackNFTamountsAfterSwap(uint amount0, uint amount1);
     // event RepackMintingNFT(int24 upper, int24 lower, uint amount0, uint amount1);
+    
     // event DepositDeductibleInDollars(uint deductible);
     // event DepositDeductibleInETH(uint deductible);
     // event DepositInsured(uint insured);
@@ -109,7 +115,7 @@ contract MO is Ownable {
      // upfront (upon deposit), half upon withdrawal
      // deducted as a % FEE from the $ value which
      // is either being deposited or moved in fold
-    struct Pod { // same as Pot in QD, Babi renamed 
+    struct Pod { 
         uint credit; // sum[amt x price at deposit]
         uint debit; //  quantity of tokens pledged 
     } /* for QD, credit = contribution to weighted
@@ -123,7 +129,8 @@ contract MO is Ownable {
     // in the future...our case is bilateral...
     // promise for a promise, aka quid pro quo...
     struct Offer { Pod weth; Pod carry; Pod work;
-    uint last; } // timestamp of last fold() event
+    Pod last; } // timestamp of last liquidate and
+    // % that's been liquidated (smaller over time)
     // work is like a checking account (credit can
     // be drawn against it) while weth is savings,
     // but it pays interest to the contract itself;
@@ -246,23 +253,24 @@ contract MO is Ownable {
             uint debit = pledges[who].carry.debit;
             uint share = FullMath.mulDiv(WAD, 
                 balance, QUID.totalSupply());
-            // emit CreditHelperShare(share);
+            emit CreditHelperShare(share);
             credit = share;
             if (debit > 0) { // share is product
                 // projected ROI if QD is $1...
                 uint roi = FullMath.mulDiv(WAD, 
                     balance - debit, debit);
-                // emit CreditHelperROI(roi);
+                
                 // calculate individual ROI over total 
-                // TODO possibly too many WADs 
                 roi = FullMath.mulDiv(WAD, roi, AVG_ROI);
                 credit = FullMath.mulDiv(roi, share, WAD);
+                emit CreditHelperROI(roi);
                 // credit is the product (composite) of 
                 // two separate share (ratio) quantities 
                 // and the sum of products is what we use
                 // in determining pro rata in redeem()...
             }   pledges[who].carry.credit = credit;
             SUM += credit; // update sum with new share
+            emit CreditHelper(credit);
         }
     }
 
@@ -794,8 +802,9 @@ contract MO is Ownable {
             } 
         } // "things have gotten closer to the sun, and I've done 
         // things in small doses, so don't think that I'm pushing 
-        // you away...when you're the one that I've kept closest..."
-        if (state.liquidate && (QUID.blocktimestamp() - pledge.last > 1 hours)) {  
+        // you away...when you're...
+        if (state.liquidate && ( // the one that I've kept closest"
+            QUID.blocktimestamp() - pledge.last.credit > 1 hours)) {  
             amount = _min((100 + (100 - state.cap)) * state.repay / 100, 
             QUID.balanceOf(beneficiary)); QUID.burn(beneficiary, amount);
             // subtract the $ value of QD burned from pledge's work credit...
@@ -813,8 +822,9 @@ contract MO is Ownable {
                     // "It's like inch by inch, step by step,
                     // I'm closin' in on your position and 
                     // [eviction] is my mission..."
+                    // Euler’s disk 💿 erasure code
                     pledge.work.credit -= amount; 
-                    pledge.last = QUID.blocktimestamp();
+                    pledge.last.credit = QUID.blocktimestamp();
                 } else { // "it don't get no better than this, you catch my [dust]"
                     // otherwise we run into a vacuum leak (infinite contraction)
                     pledges[address(this)].weth.debit += pledge.work.debit;
