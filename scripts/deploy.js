@@ -156,6 +156,8 @@ async function main() { // run some tests on our contracts
     // });
     var balance;
     var tx; var receipt;
+    const fourWeeks = '40320' // in seconds
+    const sixWeeks = '63360'
     const bill = '100000000000000000000'
     const rack = '1000000000000000000000'
     if (shouldDeploy) {
@@ -187,7 +189,9 @@ async function main() { // run some tests on our contracts
     try {
       tx = await MOWithBeneficiary.deposit(beneficiary, bill, addresses.USDe, false)
       receipt = await tx.wait() 
-      
+      console.log('fastForwarding')
+      tx = await QD.fastForward(fourWeeks)
+      await tx.wait() 
       // fastForward a bit, try deposit again
       tx = await MOWithSecondary.deposit(secondary, bill, addresses.USDe, false)
       receipt = await tx.wait() 
@@ -208,10 +212,6 @@ async function main() { // run some tests on our contracts
 
     tx = await MO.get_info(secondary)
     console.log("get_info(secondary):", tx.toString());
-
-    // TODO transfer QD from one to the other and 
-    // observe how the transferHelper and creditHelper
-    // will respond
     
     const amountInWei = ethers.parseEther("0.01");
     const largeAmountInWei = ethers.parseEther("0.1");
@@ -256,6 +256,13 @@ async function main() { // run some tests on our contracts
     } catch (error) {
       console.error("Error in withdraw:", error)
     }
+
+    tx = await QD.fastForward(sixWeeks)
+    await tx.wait() 
+
+    // TODO transfer QD from one to the other and 
+    // observe how the transferHelper and creditHelper
+    // will respond
    
     // simulate a price drop, so that we can claim 
     tx = await MO.set_price_eth(false, false) 

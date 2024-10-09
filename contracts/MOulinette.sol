@@ -77,9 +77,9 @@ contract MO is Ownable {
     // event ThirdInRedeem(uint third);
     // event AbsorbInRedeem(uint absorb);
     
-    event Fold(uint price, uint value, uint cover);
-    event FoldDelta(uint delta);
-    event FoldMinted(uint minted);
+    // event Fold(uint price, uint value, uint cover);
+    // event FoldDelta(uint delta);
+    // event FoldMinted(uint minted);
 
     // event SwapAmountsForLiquidity(uint amount0, uint amount1);
     // event RepackNFTamountsAfterCollectInBurn(uint amount0, uint amount1);
@@ -129,7 +129,8 @@ contract MO is Ownable {
     // in the future...our case is bilateral...
     // promise for a promise, aka quid pro quo...
     struct Offer { Pod weth; Pod carry; Pod work;
-    Pod last; } // timestamp of last liquidate and
+    // Pod last; } // timestamp of last liquidate and
+    uint last; } // TODO
     // % that's been liquidated (smaller over time)
     // work is like a checking account (credit can
     // be drawn against it) while weth is savings,
@@ -164,10 +165,10 @@ contract MO is Ownable {
     function _minAmount(address from, address token, 
         uint amount) internal view returns (uint) {
         amount = _min(amount, IERC20(token).balanceOf(from));
-        require(amount > 0, "zero balance"); 
+        require(amount > 0, "0 balance"); 
         if (token != address(QUID)) {
             amount = _min(amount,IERC20(token).allowance(from, address(this)));
-            require(amount > 0, "zero allowance"); 
+            require(amount > 0, "0 allowance"); 
         }
         return amount;
     }
@@ -405,7 +406,7 @@ contract MO is Ownable {
         // (protection from price manipulation attacks / sandwich attacks)
         require(state.twapTick > 0 /* && (state.twapTick > state.currentTick 
         && ((state.twapTick - state.currentTick) < 100)) || (state.twapTick <= state.currentTick  
-        && ((state.currentTick  - state.twapTick) < 100)) */, "price delta");
+        && ((state.currentTick  - state.twapTick) < 100)) */, "delta");
 
         state.priceX96 = FullMath.mulDiv(uint256(state.sqrtPriceX96), 
                                          uint256(state.sqrtPriceX96), Q96);
@@ -678,7 +679,7 @@ contract MO is Ownable {
                 _msgSender(), WETH, amount); 
                 TransferHelper.safeTransferFrom(WETH, 
                 _msgSender(), address(this), amount);
-            } else { require(msg.value > 0, "no ETH");
+            } else { require(msg.value > 0, "ETH!");
                  amount += msg.value; }
             if (msg.value > 0) { IWETH(WETH).deposit{
                                  value: msg.value}(); 
@@ -703,7 +704,7 @@ contract MO is Ownable {
                     pledges[address(this)].weth.credit, WAD
                 );
                 require(pledges[address(this)].carry.debit >
-                    in_dollars, "insuring too much ether"
+                    in_dollars, "insuring too much"
                 ); 
                 pledges[beneficiary] = pledge; // save changes
             }   _repackNFT(0, amount); // 0 represents USDC...
@@ -730,7 +731,7 @@ contract MO is Ownable {
         // our purpose, but not both" ~ Mother Cabrini
         Offer memory pledge = pledges[beneficiary];
         amount = _min(amount, pledge.weth.debit);
-        require(amount > 0, "too low of an amount");
+        require(amount > 0, "amount too low");
         state.cap = capitalisation(0, false);
         if (pledge.work.credit > 0) {
             state.collat = FullMath.mulDiv(
@@ -760,7 +761,7 @@ contract MO is Ownable {
             // if price drop > 10% (average_value > 10% more than current value) 
             if (state.average_price >= FullMath.mulDiv(110, state.price, 100)) { 
                 state.delta = state.average_value - state.collat;
-                emit FoldDelta(state.delta);
+                // emit FoldDelta(state.delta);
                 if (!sell) { state.minting = state.delta;  
                     state.deductible = FullMath.mulDiv(WAD, 
                         FullMath.mulDiv(state.collat, FEE, WAD), 
@@ -782,7 +783,7 @@ contract MO is Ownable {
                 state.cap = capitalisation(state.delta, false); 
                 if (state.minting > state.delta || state.cap > 57) { 
                     state.minting *= (100 + (100 - state.cap));
-                    emit FoldMinted(state.minting);
+                    // emit FoldMinted(state.minting);
                     QUID.mint(state.minting / 100, 
                         beneficiary, address(QUID)
                     );
@@ -804,7 +805,7 @@ contract MO is Ownable {
         // things in small doses, so don't think that I'm pushing 
         // you away...when you're...
         if (state.liquidate && ( // the one that I've kept closest"
-            QUID.blocktimestamp() - pledge.last.credit > 1 hours)) {  
+            QUID.blocktimestamp() - pledge.last/*.credit*/ > 1 hours)) {  
             amount = _min((100 + (100 - state.cap)) * state.repay / 100, 
             QUID.balanceOf(beneficiary)); QUID.burn(beneficiary, amount);
             // subtract the $ value of QD burned from pledge's work credit...
@@ -824,7 +825,7 @@ contract MO is Ownable {
                     // [eviction] is my mission..."
                     // Euler’s disk 💿 erasure code
                     pledge.work.credit -= amount; 
-                    pledge.last.credit = QUID.blocktimestamp();
+                    pledge.last/*.credit*/ = QUID.blocktimestamp();
                 } else { // "it don't get no better than this, you catch my [dust]"
                     // otherwise we run into a vacuum leak (infinite contraction)
                     pledges[address(this)].weth.debit += pledge.work.debit;
