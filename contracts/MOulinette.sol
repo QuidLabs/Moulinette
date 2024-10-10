@@ -25,7 +25,6 @@ contract MO is Ownable {
     address public USDE;
     address constant public WETH = 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14; // token0 on mainnet, token1 on sepolia
     address constant public USDC = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238; // token1 on mainnet, token0 on sepolia
-    
     // TODO uncomment these for mainnet deployment, make sure to respect token0 and token1 order in _swap and NFPM.mint
     // address constant public SUSDE = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
     // address constant public USDE = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
@@ -130,8 +129,8 @@ contract MO is Ownable {
     // promise for a promise, aka quid pro quo...
     struct Offer { Pod weth; Pod carry; Pod work;
     // Pod last; } // timestamp of last liquidate and
-    uint last; } // TODO
     // % that's been liquidated (smaller over time)
+    uint last; } // TODO (after testing finished)
     // work is like a checking account (credit can
     // be drawn against it) while weth is savings,
     // but it pays interest to the contract itself;

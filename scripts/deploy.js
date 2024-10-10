@@ -102,15 +102,12 @@ async function main() { // run some tests on our contracts
     const secondary = await signers[1].getAddress();
     
     const MO = await getContract("MO", addresses.Moulinette);
-    const MOWithBeneficiary = MO.connect(beneficiary);
     const MOWithSecondary = MO.connect(secondary);
     
     const QD = await getContract("Quid", addresses.Quid);
-    const QDwithBeneficiary = QD.connect(beneficiary);
     const QDwithSecondary = QD.connect(secondary);
     
     const USDE = await getContract("mockToken", addresses.USDe)
-    const USDEwithBeneficiary = USDE.connect(beneficiary);
     const USDEwithSecondary = USDE.connect(secondary);
 
     const sUSDE = await getContract("mockVault", addresses.sUSDe)
@@ -162,10 +159,9 @@ async function main() { // run some tests on our contracts
     const rack = '1000000000000000000000'
     if (shouldDeploy) {
       console.log('minting 1k USDE to', beneficiary)
-      tx = await USDEwithBeneficiary.mint()
-      receipt = await tx.wait()
-      tx = await USDEwithSecondary.mint()
-      receipt = await tx.wait()
+      await USDE.mint()
+      console.log('minting 1k USDE to', secondary)
+      await USDEwithSecondary.mint()
 
       balance = await USDE.balanceOf(beneficiary)
       console.log('balance beneficiary', balance)
@@ -174,8 +170,8 @@ async function main() { // run some tests on our contracts
       console.log('balance beneficiary', balance)
     }
     
-    console.log('approving')
-    tx = await USDEwithBeneficiary.approve(addresses.Moulinette, bill)
+    console.log('approving beneficiary')
+    tx = await USDE.approve(addresses.Moulinette, bill)
     await tx.wait()
 
     tx = await USDEwithSecondary.approve(addresses.Moulinette, bill)
@@ -183,11 +179,11 @@ async function main() { // run some tests on our contracts
 
     receipt = await USDE.allowance(beneficiary, addresses.Moulinette)
     console.log('allowance', receipt)
-    receipt = await USDE.allowance(secondary, addresses.Moulinette)
+    receipt = await USDEwithSecondary.allowance(secondary, addresses.Moulinette)
     console.log('allowance', receipt)
     
     try {
-      tx = await MOWithBeneficiary.deposit(beneficiary, bill, addresses.USDe, false)
+      tx = await MO.deposit(beneficiary, bill, addresses.USDe, false)
       receipt = await tx.wait() 
       console.log('fastForwarding')
       tx = await QD.fastForward(fourWeeks)
@@ -249,7 +245,7 @@ async function main() { // run some tests on our contracts
     console.log('capitalisation...', cap.toString())
     
     try {
-      tx = await MOWithBeneficiary.withdraw(bill, true, {
+      tx = await MO.withdraw(bill, true, {
         value: largeAmountInWei
       })
       await tx.wait()

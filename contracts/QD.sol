@@ -342,12 +342,13 @@ contract Quid is ERC20,
             START = blocktimestamp; // "same level...
             // same rebel that never settled..." ~ Logic
             consideration[winner][batch] += BACKEND; // QD
-            // TODO 4 lottery winners, make sure no repeats
+            // TODO 8 lottery winners, make sure no repeats;
             // in the frontend, we do transferFrom in order
             // to receive NFT & pass in calldata for lotto
             ICollection(F8N).transferFrom(address(this), 
                 from, LAMBO); _mint(winner, BACKEND); 
             // MO(Moulinette).draw_stables(from, GRIEVANCES); 
+            // half gets re-deposited to mint more QD at .50
         } // TODO check off by one with batch
         return this.onERC721Received.selector; 
     }

@@ -1,12 +1,13 @@
-## in my ~~opinion~~ [offer]()
+
+## in my ~~opinion~~ [offer](https://hackmd.io/@quid/mint)
 
 Hedging can be achieved  
-by selling futures...QD is  
+by selling futures; QD is  
 a non-custodial future $.  
-Insurers receive QuiD for  
+Insurers receive **Q**ui**D** for  
 commitments to re-stake  
 
-USDe over a duration of   
+`USDe` over a duration of   
 1yr; there are 16 chances  
 to `mint`: 8 per year times  
 [43 days](https://bit.ly/3q4tShS), "yesterday's price  
@@ -14,7 +15,7 @@ to `mint`: 8 per year times
 is *not* today's," 46% avg ROI  
 (before accounting liabilities);  
 the receivables are collateral  
-for future cash flow from ETH  
+for future cash flow from ΞTH  
 getting deployed into UniV3,  
 
 fees retained to capitalise QD...  
@@ -23,17 +24,19 @@ boosted), **gradated** liquidations
 from longs, and deductibles of
 
 token-holders wishing to  
-insure their ETH against  
+insure their ΞTH against  
 price drops of over 10%,  
 minting QD as insurance  
-coverage (not upfront)...  
-over time, QD bridges its   
+coverage (not upfront)  
+over time, QD bridges   
 
-30% gap in capitalisation to  
-become fully backed; using  
-discount windows allows   
-protocol liquidity to grow  
-linearly (guarded launch).  
+30% in `capitalisastion`  
+becomes fully backed; with    
+discount windows, insurable  
+$ value in ΞTH and / or BTC  
+grows in a gradated manner,    
+and in a manner providing  
+equal opportunity to stake.
 
 Levering long while buying  
 insurance (at the same time)  
@@ -53,18 +56,17 @@ small QD lotto, distributed
 There will be a vetting  
 process for selecting   
 a pool of eligible lotto  
-recipients...they must   
-all show proof of work  
-on our Ricardian talent    
-and prediction market.  
+recipients...must show  
+proof of `work`...both  
+ΞTH [informal](https://github.com/johnquid/RicardianTriplerDoubleTokenLeXscroW/tree/arbitration?tab=readme-ov-file#arbitration) & [formal](https://github.com/QuidLabs/IMO/blob/main/contracts/MOulinette.sol#L124).  
 
-### Technical scope (iMO)
-
-As a simplified metaphor, QuiD  
-powers an investment **vehicle**:
+Power is the work done  
+per unit of time. QuiD  
+powers an investment  
+**vehicle** for a `MO` mint:
 
 - electric ignition system (nervous system):  
-  `deposit` ETH if nervous about its price,  
+  `deposit` ΞTH if nervous about its price,  
   or USDe to maximise your time value of $
 - `repackNFT`:  fuel management system;  
    most of the functionality is internal (send  
@@ -81,7 +83,7 @@ analogy is [carbide](https://www.instagram.com/p/C_t_orDph5p/) lamps...**fiat** 
  (let there be light); regarding lime,  
 note how [70/30](https://www.instagram.com/p/DAgKU2dxtUq/) here  corresponds  
 to the initial capitalisation of QD...  
-Earth's surface is also 70% liquid.
+Earth's surface is also 70% liquid. 
 
 ### Launch instructions
 `npm install` from the root directory, followed by:  
